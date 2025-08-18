@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from enum import Enum
 
-from models.design_goal_tile import DesignGoalTile
+from core.models.design_goal_tile import DesignGoalTile
 
 
-class DesignGoalConfig(str, Enum):
+class DesignGoalTiles(Enum):
     """The six unique design goal configurations.
 
     Uses the letter notation defined in docs/DESIGN_GOAL_TILES.md.

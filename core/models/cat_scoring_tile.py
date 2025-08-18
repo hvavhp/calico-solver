@@ -4,8 +4,6 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from core.enums import Pattern
-
 
 class CatDifficultyGroup(int, Enum):
     """Dot difficulty groups used during setup selection."""
@@ -46,14 +44,12 @@ class CatScoringTile(BaseModel):
     - name: the cat tile name (e.g., Millie, Rumi)
     - difficulty_group: one of the three dot groups (1, 2, or 3 dots)
     - requirement: either a GroupSizeRequirement or ShapeRequirement
-    - allowed_patterns: exactly two patterns assigned during setup
     - token_values_desc: ordered high-to-low stack of token values for this cat
     """
 
     name: str
     difficulty_group: CatDifficultyGroup
     requirement: GroupSizeRequirement | ShapeRequirement
-    allowed_patterns: tuple[Pattern, Pattern]
     token_values_desc: list[int] = Field(
         default_factory=list,
         description="Highest to lowest remaining values for this cat's tokens.",

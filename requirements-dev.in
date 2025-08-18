@@ -8,6 +8,9 @@ cfgv
 identify
 nodeenv
 virtualenv
+platformdirs
+distlib
+filelock
 pytest-dependency
 openpyxl
 python-slugify

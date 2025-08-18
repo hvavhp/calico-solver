@@ -6,11 +6,13 @@ Exports:
 """
 
 from .color import Color
-from .design_goal import DesignGoalConfig
+from .design_goal import DesignGoalTiles
+from .edge_tile_settings import EdgeTileSettings
 from .pattern import Pattern
 
 __all__ = [
     "Color",
     "Pattern",
-    "DesignGoalConfig",
+    "DesignGoalTiles",
+    "EdgeTileSettings",
 ]

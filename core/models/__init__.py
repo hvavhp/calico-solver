@@ -1,6 +1,6 @@
 """Pydantic models for core Calico domain objects."""
 
-from core.enums import DesignGoalConfig
+from core.enums import DesignGoalTiles, EdgeTileSettings
 
 from .cat_scoring_tile import (
     CatDifficultyGroup,
@@ -23,5 +23,6 @@ __all__ = [
     "CatShapeType",
     "CatDifficultyGroup",
     "DesignGoalTile",
-    "DesignGoalConfig",
+    "DesignGoalTiles",
+    "EdgeTileSettings",
 ]
