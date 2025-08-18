@@ -14,7 +14,7 @@ References for rules language and terms: publisher overview and widely cited rul
 - **Pattern group**: A contiguous group of tiles all sharing the same pattern (used for cats). There are 6 different patterns in total.
 - **Design goal neighborhood**: The six hexes that surround one design goal tile on a player’s board. These six specific positions are used to evaluate that goal’s arrangement.
 - **Letter notation (design goals)**: Letters indicate “same vs different” among the six surrounding tiles. For example, `AA-BB-CC` means three pairs where each pair matches (by color or by pattern), and pairs are different from one another; `A-B-C-D-E-F` means all six different; `AAA-BBB` means two triplets of matching tiles, and the two triplets are different from each other.
-- **Game board**: each game board is a rectangle board consisting of hexagonal tiles putting together without gaps (hence each tile is neighboured to 6 other tiles). The board is 7x7, with 24 tiles are edges and 25 inner tiles. Among the inner tiles, 3 are design goal tiles, where the scoring rules are placed, leaving 22 left to place the patch tiles. These 3 tiles are in (col-row) positions: (4,3), (5,4), and (3,5).
+- **Game board**: each game board (or Quilt Board) is a rectangle board consisting of hexagonal tiles putting together without gaps (hence each tile is neighboured to 6 other tiles). The board is 7x7, with 24 tiles are edges and 25 inner tiles. Among the inner tiles, 3 are design goal tiles, where the scoring rules are placed, leaving 22 left to place the patch tiles. These 3 tiles are in (col-row) positions: (4,3), (5,4), and (3,5).
 
 ---
 
@@ -155,5 +155,3 @@ Compute at end of game (given final board states):
 ### Final Score Formula (per player)
 
 Total Score = (3 × number_of_color_buttons) + (3 if rainbow_button_earned else 0) + (sum of all cat token values taken) + (sum of the three design goal scores)
-
-

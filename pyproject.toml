@@ -1,0 +1,116 @@
+[project]
+name = "calico-solver"
+version = "0.1.0"
+description = "A Python project"
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "COM", # flake8-commas
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "D",   # pydocstyle
+]
+ignore = [
+    "COM812", # Ignore COM812 to avoid conflicts with formatter
+    "SIM102", # Ignore SIM102 collapsible-if
+    "SIM108", # Ignore SIM108 if-else-block-instead-of-if-exp
+    "SIM117", # Ignore SIM117 multiple-with-statements
+    "RET504", # Ignore RET504 unnecessary-assign
+    "B008",   # Ignore B008 Do not perform function call `Depends` in argument defaults
+    "C408",   # Ignore C408 unnecessary-collection-call
+    "D100",   # Ignore D100 for docstrings
+    "D101",   # Ignore D101 for docstrings
+    "D102",   # Ignore D102 for docstrings
+    "D103",   # Ignore D103 for docstrings
+    "D104",   # Ignore D104 for docstrings
+    "D105",   # Ignore D105 for docstrings
+    "D107",   # Ignore D107 for docstrings
+    "D202",   # Ignore D202 for docstrings
+    "D205",   # Ignore D205 for docstrings
+    "D212",   # Ignore D212 for docstrings
+    "D403",   # Ignore D403 for docstrings
+    "D415",   # Ignore D415 for docstrings
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.commitizen]
+name = "cz_customize"
+
+[tool.commitizen.customize]
+message_template = "{{change_type}}:{% if show_message %} {{message}}{% endif %}"
+example = "feat: this feature enable customize through config file"
+schema = "<type>(<scope>): <body>"
+schema_pattern = "(?s)(build|chore|ci|docs|feat|fix|perf|refactor|revert|release|style|test|workflow|wip)(\\(\\S+\\))?:( [^\n\r]+)((\n\n.*)|(\\s*))?$"
+bump_pattern = "^(break|new|fix|hotfix)"
+bump_map = { "break" = "MAJOR", "new" = "MINOR", "fix" = "PATCH", "hotfix" = "PATCH" }
+change_type_order = [
+    "build",
+    "chore",
+    "ci",
+    "docs",
+    "feat",
+    "fix",
+    "perf",
+    "refactor",
+    "revert",
+    "release",
+    "style",
+    "test",
+    "workflow",
+    "wip",
+]
+commit_parser = "(?s)(build|chore|ci|docs|feat|fix|perf|refactor|revert|release|style|test|workflow|wip)(\\(\\S+\\))?:( [^\n\r]+)((\n\n.*)|(\\s*))?$"
+[[tool.commitizen.customize.questions]]
+type = "list"
+name = "change_type"
+choices = [
+    { value = "feat", name = "feat: A new feature." },
+    { value = "fix", name = "fix: A bug fix." },
+    { value = "docs", name = "docs: Documentation only changes." },
+    { value = "style", name = "style: Changes that do not affect the meaning of the code." },
+    { value = "refactor", name = "refactor: A code change that neither fixes a bug nor adds a feature." },
+    { value = "perf", name = "perf: A code change that improves performance." },
+    { value = "test", name = "test: Adding missing tests or correcting existing tests." },
+    { value = "build", name = "build: Changes that affect the build system or external dependencies." },
+    { value = "ci", name = "ci: Changes to our CI configuration files and scripts." },
+    { value = "chore", name = "chore: Other changes that don't modify src or test files." },
+    { value = "revert", name = "revert: Reverts a previous commit." },
+    { value = "release", name = "release: Release new version." },
+    { value = "wip", name = "wip: Work in progress." },
+    { value = "workflow", name = "workflow: Workflow improvements." },
+]
+# choices = ["feature", "fix"]  # short version
+message = "Select the type of change you are committing"
+
+[[tool.commitizen.customize.questions]]
+type = "input"
+name = "message"
+message = "Body."
+
+[[tool.commitizen.customize.questions]]
+type = "confirm"
+name = "show_message"
+message = "Do you want to add body message in commit?"
+
+[tool.pytest.ini_options]
+addopts = ["--tb=native", "-p", "no:doctest", "-p", "no:warnings"]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+disable_test_id_escaping_and_forfeit_all_rights_to_community_support = true

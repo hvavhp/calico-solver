@@ -86,4 +86,3 @@ Cat scoring tiles are organized into 3 difficulty groups, indicated by the numbe
 Notes:
 - “Choose a side” means you’ll use either the size-based requirement or the shape-based requirement printed on that tile for the entire game.
 - The two allowed patterns for each selected tile are assigned at setup using the black & white pattern markers.
-

@@ -1,0 +1,14 @@
+-c requirements.txt
+
+pytest
+pytest-asyncio
+ruff
+pre-commit
+cfgv
+identify
+nodeenv
+virtualenv
+pytest-dependency
+openpyxl
+python-slugify
+jsonlines

@@ -56,5 +56,3 @@ Letter notation primer:
 - Each player’s personal set contains exactly one of each of the six configurations above.
 - The physical orientation of surrounding hexes does not change the configuration; only the multiset structure (e.g., 3–2–1) matters.
 - Scoring values (lower for color-or-pattern; higher for color-and-pattern) are printed on each goal tile and depend on the configuration; see `docs/CALICO_SCORING.md` for how goals are evaluated and scored.
-
-

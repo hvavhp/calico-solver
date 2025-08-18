@@ -1,0 +1,23 @@
+[flake8]
+max-line-length = 120
+# E203: whitespace before ‘,’, ‘;’, or ‘:’
+# F401: module imported but unused
+# F541: f-string is missing placeholders
+# W605: invalid escape sequence
+# W291: trailing whitespace
+# E711: comparison to None should be 'if cond is None:'
+# E501: line too long, ignore this since black takes care of it
+# E704: multiple statements on one line (def)
+select = C,E,F,W,B,B950
+extend-ignore = E203, E501, E704, W503
+
+# Ignore unused imports in __init__.py
+per-file-ignores = __init__.py:F401
+
+exclude =
+    .git,
+    __pycache__,
+    migrations,
+    venv,
+    tests,
+    ragflow
