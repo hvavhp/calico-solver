@@ -9,27 +9,15 @@ rq
 sqlalchemy[asyncio]
 sqlglot
 
-# File and Data Processing
-filetype
-fsspec
-lxml
-markdownify
-morefs[asynclocalfs]
-orjson
-ossfs
-pyyaml
-python-pptx
-trafilatura
-xmltodict
-
 # Utilities and Helpers
-async_lru
 blinker
-loguru
 pydantic
 pydantic_settings
-python-jose[cryptography]
 snowflake-id
 typer
 tabulate
-# lingua-language-detector
+
+ortools
+numpy
+pandas
+protobuf
