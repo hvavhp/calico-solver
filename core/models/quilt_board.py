@@ -197,6 +197,14 @@ class QuiltBoard(BaseModel):
             List of tile pairs, where each pair is a list of 2 neighboring HexPosition objects.
             At least one tile in each pair is adjacent to an edge tile.
         """
+
+        valid_positions = []
+        for q in range(7):
+            for r in range(7):
+                pos = HexPosition(q=q, r=r)
+                if not self._is_edge_position(pos) and not self._is_design_goal_position(pos):
+                    valid_positions.append(pos)
+
         # Find all edge tiles
         edge_tiles = []
         for q in range(7):
@@ -227,6 +235,8 @@ class QuiltBoard(BaseModel):
             for neighbor in neighbors1:
                 # Skip if neighbor is an edge tile
                 if self._is_edge_position(neighbor):
+                    continue
+                if self._is_design_goal_position(neighbor):
                     continue
 
                 # Create the pair, ensuring consistent ordering
