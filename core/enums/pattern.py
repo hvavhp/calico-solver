@@ -10,18 +10,18 @@ class Pattern(str, Enum):
     """
 
     STRIPES = "stripes"
-    POLKA_DOTS = "polka_dots"
-    FLORAL = "floral"
+    DOTS = "dots"
+    FLOWERS = "flowers"
     VINES = "vines"
-    PLAID = "plaid"
-    HERRINGBONE = "herringbone"
+    QUATREFOIL = "quatrefoil"
+    FERNS = "ferns"
 
 
 ALL_PATTERNS: tuple[Pattern, ...] = (
     Pattern.STRIPES,
-    Pattern.POLKA_DOTS,
-    Pattern.FLORAL,
+    Pattern.DOTS,
+    Pattern.FLOWERS,
     Pattern.VINES,
-    Pattern.PLAID,
-    Pattern.HERRINGBONE,
+    Pattern.QUATREFOIL,
+    Pattern.FERNS,
 )

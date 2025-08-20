@@ -12,7 +12,7 @@ class Color(str, Enum):
     BLUE = "blue"
     GREEN = "green"
     YELLOW = "yellow"
-    ORANGE = "orange"
+    NAVY = "navy"
     PURPLE = "purple"
     PINK = "pink"
 
@@ -21,7 +21,7 @@ ALL_COLORS: tuple[Color, ...] = (
     Color.BLUE,
     Color.GREEN,
     Color.YELLOW,
-    Color.ORANGE,
+    Color.NAVY,
     Color.PURPLE,
     Color.PINK,
 )

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from core.enums import Color, Pattern
+from core.enums.color import Color
+from core.enums.pattern import Pattern
 
 
 class PatchTile(BaseModel):

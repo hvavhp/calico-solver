@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from models.cat_scoring_tile import (
+from core.models.cat_scoring_tile import (
     CatDifficultyGroup,
     CatScoringTile,
     CatShapeType,
