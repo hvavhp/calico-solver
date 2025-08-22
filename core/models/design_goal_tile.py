@@ -14,7 +14,8 @@ class DesignGoalTile(BaseModel):
     - by_attribute: used when referencing how a particular satisfaction was met
     """
 
-    config: str
+    config_name: str
+    config_numbers: list[int]
     lower_points: int = Field(..., ge=0)
     higher_points: int = Field(..., ge=0)
 

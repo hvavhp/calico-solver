@@ -62,6 +62,61 @@ def add_pair_indicators(model, bu, bp, tag):
     return pair
 
 
+class SolutionPrinter(cp_model.CpSolverSolutionCallback):
+    """Callback to print and collect all solutions."""
+
+    def __init__(self, variables, pair_variables, k, ix, it, ip):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self._variables = variables  # dict containing x, t, p, xp, tp, pp
+        self._pair_variables = pair_variables  # dict containing pair_x, pair_t, pair_p
+        self._k = k
+        self._ix = ix
+        self._it = it
+        self._ip = ip
+        self._solutions = []
+        self._solution_count = 0
+
+    def on_solution_callback(self):
+        self._solution_count += 1
+        print(f"\n--- Solution {self._solution_count} ---")
+
+        # Extract variable values
+        sol = {}
+        for name, vars_list in self._variables.items():
+            sol[name] = [self.Value(var) for var in vars_list]
+            print(f"{name}: {sol[name]}")
+
+        # Extract pair counts
+        def count_pairs(pair, idxs):
+            m = [[0] * self._k for _ in range(self._k)]
+            for i in idxs:
+                for k_val in range(self._k):
+                    for val in range(self._k):
+                        m[k_val][val] += int(round(self.Value(pair[i][k_val][val])))
+            return m
+
+        counts = [[0] * self._k for _ in range(self._k)]
+        cx = count_pairs(self._pair_variables["pair_x"], self._ix)
+        ct = count_pairs(self._pair_variables["pair_t"], self._it)
+        cp = count_pairs(self._pair_variables["pair_p"], self._ip)
+        for k_val in range(self._k):
+            for val in range(self._k):
+                counts[k_val][val] = cx[k_val][val] + ct[k_val][val] + cp[k_val][val]
+
+        sol["pair_counts_total"] = counts
+        print("Pair counts across 15 positions (k rows, l cols):")
+        for row in counts:
+            print(row)
+
+        self._solutions.append(sol)
+
+    def get_solutions(self):
+        return self._solutions
+
+    def get_solution_count(self):
+        return self._solution_count
+
+
 def solve_combined(v, m1, m2, m3, cap=3, time_limit_s=5.0):
     """
     v  : list of 6 distinct ints
@@ -69,6 +124,8 @@ def solve_combined(v, m1, m2, m3, cap=3, time_limit_s=5.0):
     m2 : pattern for T-sets (sum=6)
     m3 : pattern for P-sets (sum=6)
     cap: max allowed count for any ordered pair across the 15 counted positions
+
+    Returns all feasible solutions.
     """
     assert len(v) == 6 and sum(m1) == 6 and sum(m2) == 6 and sum(m3) == 6
     k = 6
@@ -131,43 +188,25 @@ def solve_combined(v, m1, m2, m3, cap=3, time_limit_s=5.0):
                 <= cap
             )
 
-    # Feasibility
-    model.Minimize(0)
+    # Create solution callback
+    variables = {"X": x, "T": t, "P": p, "Xp": xp, "Tp": tp, "Pp": pp}
+    pair_variables = {"pair_x": pair_x, "pair_t": pair_t, "pair_p": pair_p}
+    solution_printer = SolutionPrinter(variables, pair_variables, k, ix, it, ip)
+
+    # Search for all solutions
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit_s
-    res = solver.Solve(model)
-    if res not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+    solver.parameters.enumerate_all_solutions = True
+
+    print("Searching for all feasible solutions...")
+    status = solver.SearchForAllSolutions(model, solution_printer)
+
+    print(f"\nSearch completed with status: {solver.StatusName(status)}")
+    print(f"Total solutions found: {solution_printer.get_solution_count()}")
+
+    if solution_printer.get_solution_count() == 0:
         return None
-
-    # Extract solutions
-    sol = {
-        "X": [solver.Value(var) for var in x],
-        "T": [solver.Value(var) for var in t],
-        "P": [solver.Value(var) for var in p],
-        "Xp": [solver.Value(var) for var in xp],
-        "Tp": [solver.Value(var) for var in tp],
-        "Pp": [solver.Value(var) for var in pp],
-    }
-
-    # Optional: aggregate counted pair frequencies (for inspection)
-    def count_pairs(pair, idxs):
-        m = [[0] * k for _ in range(k)]
-        for i in idxs:
-            for k_val in range(k):
-                for val in range(k):
-                    m[k_val][val] += int(round(solver.Value(pair[i][k_val][val])))
-        return m
-
-    counts = [[0] * k for _ in range(k)]
-    cx = count_pairs(pair_x, ix)
-    ct = count_pairs(pair_t, it)
-    cp = count_pairs(pair_p, ip)
-    for k_val in range(k):
-        for val in range(k):
-            counts[k_val][val] = cx[k_val][val] + ct[k_val][val] + cp[k_val][val]
-
-    sol["pair_counts_total"] = counts
-    return sol
+    return solution_printer.get_solutions()
 
 
 if __name__ == "__main__":
@@ -178,16 +217,9 @@ if __name__ == "__main__":
     m3 = [4, 1, 1]  # P pattern: AAAA-B-C
     cap = 3
 
-    ans = solve_combined(v, m1, m2, m3, cap=cap)
-    if ans is None:
-        print("Infeasible.")
+    solutions = solve_combined(v, m1, m2, m3, cap=cap)
+    if solutions is None:
+        print("No feasible solutions found.")
     else:
-        print("X :", ans["X"])
-        print("T :", ans["T"])
-        print("P :", ans["P"])
-        print("Xp:", ans["Xp"])
-        print("Tp:", ans["Tp"])
-        print("Pp:", ans["Pp"])
-        print("Pair counts across 15 positions (k rows, l cols):")
-        for row in ans["pair_counts_total"]:
-            print(row)
+        print("\n==== SUMMARY ====")
+        print(f"Found {len(solutions)} total feasible solutions.")

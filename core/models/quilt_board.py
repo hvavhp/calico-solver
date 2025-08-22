@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from core.enums.color import Color
 from core.enums.edge_tile_settings import EdgeTileSettings
+from core.enums.pattern import Pattern
 from core.models.design_goal_tile import DesignGoalTile
 from core.models.patch_tile import PatchTile
 
@@ -21,6 +23,10 @@ class HexPosition(BaseModel):
     model_config = {
         "frozen": True,
     }
+
+    @property
+    def abs(self):
+        return self.q + self.r * 7
 
 
 class QuiltBoard(BaseModel):
@@ -86,7 +92,7 @@ class QuiltBoard(BaseModel):
         self.design_goal_tiles = goal_tiles.copy()
 
         # Add design goal tiles to fixed positions
-        design_goal_positions = [HexPosition(q=4, r=3), HexPosition(q=5, r=4), HexPosition(q=3, r=5)]
+        design_goal_positions = self.get_design_goal_tile_positions()
 
         for pos, goal_tile in zip(design_goal_positions, self.design_goal_tiles, strict=True):
             self.tiles_by_pos[pos] = goal_tile
@@ -169,7 +175,7 @@ class QuiltBoard(BaseModel):
         for q in range(7):
             for r in range(7):
                 pos = HexPosition(q=q, r=r)
-                if not self._is_edge_position(pos) and not self._is_design_goal_position(pos):
+                if not self._is_design_goal_position(pos):
                     valid_positions.append(pos)
 
         three_tile_sets = []
@@ -184,11 +190,41 @@ class QuiltBoard(BaseModel):
                     if j >= k:  # Avoid duplicates and self-comparison
                         continue
 
+                    if self._is_edge_position(pos2) and self._is_edge_position(pos3):
+                        continue
+
+                    if self._is_edge_position(pos2) and self._is_edge_position(pos1):
+                        continue
+
+                    if self._is_edge_position(pos3) and self._is_edge_position(pos1):
+                        continue
+
                     tile_set = sorted([pos1, pos2, pos3], key=lambda p: (p.q, p.r))
                     if tile_set not in three_tile_sets:
                         three_tile_sets.append(tile_set)
 
         return three_tile_sets
+
+    def get_design_goal_tile_positions(self) -> list[HexPosition]:
+        return [HexPosition(q=3, r=2), HexPosition(q=4, r=3), HexPosition(q=2, r=4)]
+
+    def get_all_patch_tiles(self) -> list[HexPosition]:
+        ret = []
+        for q in range(7):
+            for r in range(7):
+                pos = HexPosition(q=q, r=r)
+                if not self._is_edge_position(pos) and not self._is_design_goal_position(pos):
+                    ret.append(pos)
+        return ret
+
+    def get_design_goal_patch_tiles(self, goal_tile_no: int | None = None) -> list[HexPosition]:
+        design_goal_positions = self.get_design_goal_tile_positions()
+        if goal_tile_no is not None:
+            design_goal_positions = [design_goal_positions[goal_tile_no]]
+        neighbors = [self._get_hex_neighbors(tile) for tile in design_goal_positions]
+        neighbors = [n for neighbor_list in neighbors for n in neighbor_list]
+        neighbors = list(set(neighbors))
+        return neighbors
 
     def get_two_neighbor_tile_sets_near_edge(self) -> list[list[HexPosition]]:
         """Get all pairs of neighboring tiles where at least one tile is adjacent to an edge tile.
@@ -247,3 +283,100 @@ class QuiltBoard(BaseModel):
                     two_tile_sets.append(tile_pair)
 
         return two_tile_sets
+
+    def _get_color_symbol(self, color: Color) -> str:
+        """Get a single character symbol for a color."""
+        color_symbols = {
+            Color.BLUE: "B",
+            Color.GREEN: "G",
+            Color.YELLOW: "Y",
+            Color.NAVY: "N",
+            Color.PURPLE: "P",
+            Color.PINK: "K",  # K for pinK to avoid confusion with Purple
+        }
+        return color_symbols[color]
+
+    def _get_pattern_symbol(self, pattern: Pattern) -> str:
+        """Get a single character symbol for a pattern."""
+        pattern_symbols = {
+            Pattern.STRIPES: "▣ ",  # Striped square
+            Pattern.DOTS: "● ",  # Dots
+            Pattern.FLOWERS: "✿ ",  # Flower
+            Pattern.VINES: "🌿",  # Vine/leaf
+            Pattern.QUATREFOIL: "❋ ",  # Four-leaf design
+            Pattern.FERNS: "🌾",  # Fern
+        }
+        return pattern_symbols[pattern]
+
+    def _get_tile_display(self, pos: HexPosition) -> str:
+        """Get display representation for a tile at the given position."""
+        tile = self.tiles_by_pos.get(pos)
+
+        # Check if it's a design goal position
+        design_goal_positions = self.get_design_goal_tile_positions()
+        if pos in design_goal_positions:
+            if isinstance(tile, DesignGoalTile):
+                goal_idx = design_goal_positions.index(pos)
+                return f"G{goal_idx + 1}".ljust(3)  # Ensure consistent width
+            return "G? ".ljust(3)  # Should not happen
+
+        if isinstance(tile, PatchTile):
+            color_sym = self._get_color_symbol(tile.color)
+            pattern_sym = self._get_pattern_symbol(tile.pattern)
+            return f"{color_sym}{pattern_sym}"  # Ensure consistent width
+
+        # Empty space (no tile placed) - use a placeholder
+        return "---"  # Clear indication of empty space
+
+    def pretty_print(self) -> str:
+        """Pretty-print the hexagonal quilt board with colors, patterns, and design goals.
+
+        Shows:
+        - Edge tiles with their actual color and pattern symbols
+        - Design goal tiles as G1, G2, G3
+        - Patch tiles with color + pattern symbols
+        - Empty spaces for unfilled positions
+        - Hexagonal layout with odd rows shifted right
+        """
+        lines = []
+
+        # Add header
+        lines.append("Calico Quilt Board (7x7 Hexagonal)")
+        lines.append("Legend: [Color][Pattern] | G1,G2,G3=Design Goals | ---=Empty | Edge tiles shown")
+        lines.append("Colors: B=Blue, G=Green, Y=Yellow, N=Navy, P=Purple, K=Pink")
+        lines.append("Note: Odd rows (1,3,5) are shifted right to show hexagonal layout")
+        lines.append("")
+
+        # Build the hexagonal grid
+        for r in range(7):
+            line_parts = []
+
+            # Add indentation for odd rows (hexagonal offset)
+            if r % 2 == 1:
+                line_parts.append("   ")  # Half-tile offset for odd rows (3 spaces to align properly)
+
+            # Add tiles for this row
+            for q in range(7):
+                pos = HexPosition(q=q, r=r)
+                tile_display = self._get_tile_display(pos)
+                line_parts.append(tile_display)
+
+                # Add spacing between tiles (consistent spacing)
+                if q < 6:
+                    line_parts.append("   ")  # 2 spaces between tiles
+
+            # Add row number for reference
+            line_parts.append(f"  (row {r})")
+
+            lines.append("".join(line_parts))
+
+        # Add column reference
+        lines.append("")
+        # Adjust column labels to align with tiles
+        col_labels = []
+        col_labels.append("(0) ")  # First column
+        for i in range(1, 7):
+            col_labels.append(f" ({i}) ")  # Subsequent columns with padding
+        lines.append("".join(col_labels) + "  (columns)")
+
+        return "\n".join(lines)
