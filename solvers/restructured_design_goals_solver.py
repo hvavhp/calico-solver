@@ -2,13 +2,16 @@
 # pip install ortools
 
 from ortools.sat.python import cp_model
+from pydantic import BaseModel
 
 from core.enums.design_goal import DesignGoalTiles
 from core.models.design_goal_tile import DesignGoalTile
 from core.models.quilt_board import QuiltBoard
 
 
-def add_channeling(model, vars, var_indices: list[int], values, tag):
+def add_channeling(
+    model: cp_model.CpModel, vars: list[cp_model.IntVar], var_indices: list[int], values: list[int], tag: str
+) -> list[list[cp_model.IntVar]]:
     """Create channeling booleans b[i][k] <-> (g[i] == values[k]), with exactly-one per i."""
     n, k = len(vars), len(values)
     b = [[model.NewBoolVar(f"b[{tag}][i={i},k={k_val}]") for k_val in range(k)] for i in var_indices]
@@ -20,7 +23,9 @@ def add_channeling(model, vars, var_indices: list[int], values, tag):
     return b
 
 
-def add_pattern(model, b, mults, tag):
+def add_pattern(
+    model: cp_model.CpModel, b: list[list[cp_model.IntVar]], mults: list[int], tag: str
+) -> list[list[cp_model.IntVar]]:
     """Enforce multiplicity pattern 'mults' over one set via slot assignment."""
     n, k = len(b), len(b[0])
     r = len(mults)
@@ -48,7 +53,9 @@ def add_pattern(model, b, mults, tag):
     return w
 
 
-def add_pair_indicators(model, b_p, b_c, tag):
+def add_pair_indicators(
+    model: cp_model.CpModel, b_p: list[list[cp_model.IntVar]], b_c: list[list[cp_model.IntVar]], tag: str
+) -> list[list[list[cp_model.IntVar]]]:
     """Create pair[i][k][l] = AND(bU[i][k], bP[i][l]); also exactly-one per i."""
     n, k = len(b_p), len(b_p[0])
     pair = [
@@ -166,7 +173,52 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         return self._solution_count
 
 
+class DesignGoalsModel(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
+    model: cp_model.CpModel
+    pattern_variables: dict[str, cp_model.IntVar]
+    color_variables: dict[str, cp_model.IntVar]
+    pair_indicators: list[list[list[cp_model.IntVar]]]
+    variable_indices: list[int]
+    k: int
+    design_goal_tiles: list[DesignGoalTile]
+    cap: int
+    time_limit_s: float
+
+
 def solve_combined(v, m1: DesignGoalTile, m2: DesignGoalTile, m3: DesignGoalTile, cap=3, time_limit_s=5.0):
+    design_goals_model = build_model(v, m1, m2, m3, cap, time_limit_s)
+
+    # Create solution callback
+    solution_printer = SolutionPrinter(
+        design_goals_model.pattern_variables,
+        design_goals_model.color_variables,
+        design_goals_model.pair_indicators,
+        design_goals_model.variable_indices,
+        design_goals_model.k,
+        design_goals_model.design_goal_tiles,
+    )
+
+    # Search for all solutions
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = time_limit_s
+    solver.parameters.enumerate_all_solutions = True
+
+    print("Searching for all feasible solutions...")
+    status = solver.SearchForAllSolutions(design_goals_model.model, solution_printer)
+
+    print(f"\nSearch completed with status: {solver.StatusName(status)}")
+    print(f"Total solutions found: {solution_printer.get_solution_count()}")
+
+    if solution_printer.get_solution_count() == 0:
+        return None
+    return solution_printer.get_solutions()
+
+
+def build_model(
+    v, m1: DesignGoalTile, m2: DesignGoalTile, m3: DesignGoalTile, cap=3, time_limit_s=5.0
+) -> DesignGoalsModel:
     """
     v  : list of 6 distinct ints
     m1 : pattern for X-sets (sum=6), e.g. [2,2,2] or [3,3] or [4,1,1]
@@ -256,25 +308,17 @@ def solve_combined(v, m1: DesignGoalTile, m2: DesignGoalTile, m3: DesignGoalTile
         for _l in range(k):
             model.Add(sum(pair_indicators[i][_k][_l] for i in range(len(pair_indicators))) <= cap)
 
-    # Create solution callback
-    solution_printer = SolutionPrinter(
-        pattern_variables, color_variables, pair_indicators, variable_indices, k, [m1, m2, m3]
+    return DesignGoalsModel(
+        model=model,
+        pattern_variables=pattern_variables,
+        color_variables=color_variables,
+        pair_indicators=pair_indicators,
+        variable_indices=variable_indices,
+        k=k,
+        design_goal_tiles=[m1, m2, m3],
+        cap=cap,
+        time_limit_s=time_limit_s,
     )
-
-    # Search for all solutions
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = time_limit_s
-    solver.parameters.enumerate_all_solutions = True
-
-    print("Searching for all feasible solutions...")
-    status = solver.SearchForAllSolutions(model, solution_printer)
-
-    print(f"\nSearch completed with status: {solver.StatusName(status)}")
-    print(f"Total solutions found: {solution_printer.get_solution_count()}")
-
-    if solution_printer.get_solution_count() == 0:
-        return None
-    return solution_printer.get_solutions()
 
 
 def main():
