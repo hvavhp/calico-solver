@@ -16,7 +16,7 @@ def add_channeling(
     n, k = len(vars), len(values)
     b = [[model.NewBoolVar(f"b[{tag}][i={i},k={k_val}]") for k_val in range(k)] for i in var_indices]
     for i in range(n):
-        model.Add(sum(b[i][k_val] for k_val in range(k)) == 1)
+        # model.Add(sum(b[i][k_val] for k_val in range(k)) == 1)
         for k_val in range(k):
             model.Add(vars[i] == values[k_val]).OnlyEnforceIf(b[i][k_val])
             model.Add(vars[i] != values[k_val]).OnlyEnforceIf(b[i][k_val].Not())
@@ -179,6 +179,8 @@ class DesignGoalsModel(BaseModel):
     model: cp_model.CpModel
     pattern_variables: dict[str, cp_model.IntVar]
     color_variables: dict[str, cp_model.IntVar]
+    z_pattern_variables: dict[int, list[cp_model.IntVar]]
+    z_color_variables: dict[int, list[cp_model.IntVar]]
     pair_indicators: list[list[list[cp_model.IntVar]]]
     variable_indices: list[int]
     k: int
@@ -187,8 +189,10 @@ class DesignGoalsModel(BaseModel):
     time_limit_s: float
 
 
-def solve_combined(v, m1: DesignGoalTile, m2: DesignGoalTile, m3: DesignGoalTile, cap=3, time_limit_s=5.0):
-    design_goals_model = build_model(v, m1, m2, m3, cap, time_limit_s)
+def solve_combined(
+    v: list[int], m1: DesignGoalTile, m2: DesignGoalTile, m3: DesignGoalTile, cap: int = 3, time_limit_s: float = 5.0
+):
+    design_goals_model = build_model(None, v, m1, m2, m3, cap, time_limit_s)
 
     # Create solution callback
     solution_printer = SolutionPrinter(
@@ -217,7 +221,13 @@ def solve_combined(v, m1: DesignGoalTile, m2: DesignGoalTile, m3: DesignGoalTile
 
 
 def build_model(
-    v, m1: DesignGoalTile, m2: DesignGoalTile, m3: DesignGoalTile, cap=3, time_limit_s=5.0
+    model: cp_model.CpModel | None = None,
+    v: list[int] = None,
+    m1: DesignGoalTile = DesignGoalTiles.THREE_PAIRS.value,
+    m2: DesignGoalTile = DesignGoalTiles.THREE_TWO_ONE.value,
+    m3: DesignGoalTile = DesignGoalTiles.FOUR_TWO.value,
+    cap: int = 3,
+    time_limit_s: float = 5.0,
 ) -> DesignGoalsModel:
     """
     v  : list of 6 distinct ints
@@ -228,10 +238,14 @@ def build_model(
 
     Returns all feasible solutions.
     """
+    if v is None:
+        v = [1, 2, 3, 4, 5, 6]
     assert len(v) == 6
     k = 6
 
-    model = cp_model.CpModel()
+    if not model:
+        model = cp_model.CpModel()
+
     dom = cp_model.Domain.FromValues(v)
 
     board = QuiltBoard(design_goal_tiles=[m1, m2, m3])
@@ -312,6 +326,8 @@ def build_model(
         model=model,
         pattern_variables=pattern_variables,
         color_variables=color_variables,
+        z_pattern_variables=b_pattern_map,
+        z_color_variables=b_color_map,
         pair_indicators=pair_indicators,
         variable_indices=variable_indices,
         k=k,

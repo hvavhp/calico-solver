@@ -25,3 +25,12 @@ ALL_COLORS: tuple[Color, ...] = (
     Color.PURPLE,
     Color.PINK,
 )
+
+COLOR_MAP = {
+    Color.BLUE: 0,
+    Color.GREEN: 1,
+    Color.YELLOW: 2,
+    Color.NAVY: 3,
+    Color.PURPLE: 4,
+    Color.PINK: 5,
+}

@@ -7,11 +7,12 @@ Select which solver to run from an interactive menu.
 """
 
 import argparse
-import sys
 
 from core.enums.design_goal import DesignGoalTiles
 from core.enums.edge_tile_settings import EdgeTileSettings
 from core.models.quilt_board import QuiltBoard
+from solvers.buttons_solver import main as buttons_solver_main
+from solvers.new_button_solver import main as new_button_solver_main
 
 
 def print_banner():
@@ -370,7 +371,7 @@ def run_k_consistent_solver():
         print(f"Problem size: {n} variables, {len(values)} values, {len(m)} subsets, {len(edges)} edges")
         print("Note: This solver uses k-consistent component counting")
 
-        model, x, ys, ysk, r, a = build_model(n, values, m, edges, add_additional_constraints=add_constraints)
+        model, x, ys, ysk, r, a = build_model(None, n, values, m, edges, add_additional_constraints=add_constraints)
         result = solve_model(model, x, ys, ysk, r, a, time_limit_sec=200)
 
         print("\nResults:")
@@ -457,7 +458,9 @@ def main():
     """Main runner function."""
     # Handle command line arguments
     parser = argparse.ArgumentParser(description="Calico Solver Runner")
-    parser.add_argument("--solver", type=int, choices=[1, 2, 3, 4, 5, 6, 7], help="Run specific solver directly (1-7)")
+    parser.add_argument(
+        "--solver", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8], help="Run specific solver directly (1-7)"
+    )
     args = parser.parse_args()
 
     print_banner()
@@ -471,11 +474,11 @@ def main():
             3: run_full_design_goals_solver,
             4: run_new_design_goals_solver,
             5: run_component_solver,
-            6: run_k_consistent_solver,
+            6: new_button_solver_main,
             7: run_quilt_board_demo,
+            8: buttons_solver_main,
         }
-        success = solvers[args.solver]()
-        sys.exit(0 if success else 1)
+        solvers[args.solver]()
 
     # Interactive mode
     while True:
@@ -496,9 +499,11 @@ def main():
         elif choice == 5:
             run_component_solver()
         elif choice == 6:
-            run_k_consistent_solver()
+            new_button_solver_main()
         elif choice == 7:
             run_quilt_board_demo()
+        elif choice == 8:
+            buttons_solver_main()
         else:
             print("❌ Invalid choice. Please enter a number from 0-7.")
 

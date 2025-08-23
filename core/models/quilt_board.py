@@ -28,6 +28,10 @@ class HexPosition(BaseModel):
     def abs(self):
         return self.q + self.r * 7
 
+    @staticmethod
+    def from_abs(abs_pos: int) -> HexPosition:
+        return HexPosition(q=abs_pos % 7, r=abs_pos // 7)
+
 
 class QuiltBoard(BaseModel):
     """A player's quilt board mapping hex positions to placed tiles.
@@ -175,8 +179,11 @@ class QuiltBoard(BaseModel):
         for q in range(7):
             for r in range(7):
                 pos = HexPosition(q=q, r=r)
-                if not self._is_design_goal_position(pos):
-                    valid_positions.append(pos)
+                if self._is_edge_position(pos):
+                    continue
+                if self._is_design_goal_position(pos):
+                    continue
+                valid_positions.append(pos)
 
         three_tile_sets = []
 
@@ -186,17 +193,16 @@ class QuiltBoard(BaseModel):
 
             # For each pair of neighbors of pos1, check if they are also neighbors of each other
             for j, pos2 in enumerate(neighbors):
+                if self._is_edge_position(pos2):
+                    continue
+                if self._is_design_goal_position(pos2):
+                    continue
                 for k, pos3 in enumerate(neighbors):
-                    if j >= k:  # Avoid duplicates and self-comparison
+                    if k == j:
                         continue
-
-                    if self._is_edge_position(pos2) and self._is_edge_position(pos3):
+                    if self._is_edge_position(pos3):
                         continue
-
-                    if self._is_edge_position(pos2) and self._is_edge_position(pos1):
-                        continue
-
-                    if self._is_edge_position(pos3) and self._is_edge_position(pos1):
+                    if self._is_design_goal_position(pos3):
                         continue
 
                     tile_set = sorted([pos1, pos2, pos3], key=lambda p: (p.q, p.r))
@@ -225,6 +231,28 @@ class QuiltBoard(BaseModel):
         neighbors = [n for neighbor_list in neighbors for n in neighbor_list]
         neighbors = list(set(neighbors))
         return neighbors
+
+    def get_edge_colors_of_tile(self, pos: HexPosition) -> list[Color]:
+        """Get the colors of all edge tiles adjacent to the given position.
+
+        Args:
+            pos: The hex position to find adjacent edge tile colors for
+
+        Returns:
+            List of colors from adjacent edge tiles (may be empty if no edge tiles are adjacent)
+        """
+        neighbors = self._get_hex_neighbors(pos)
+        edge_colors = []
+
+        for neighbor_pos in neighbors:
+            # Check if this neighbor is an edge position
+            if self._is_edge_position(neighbor_pos):
+                # Get the tile at this edge position
+                edge_tile: PatchTile | None = self.tiles_by_pos.get(neighbor_pos)
+                if edge_tile:
+                    edge_colors.append(edge_tile.color)
+
+        return edge_colors
 
     def get_two_neighbor_tile_sets_near_edge(self) -> list[list[HexPosition]]:
         """Get all pairs of neighboring tiles where at least one tile is adjacent to an edge tile.
@@ -317,8 +345,8 @@ class QuiltBoard(BaseModel):
         if pos in design_goal_positions:
             if isinstance(tile, DesignGoalTile):
                 goal_idx = design_goal_positions.index(pos)
-                return f"G{goal_idx + 1}".ljust(3)  # Ensure consistent width
-            return "G? ".ljust(3)  # Should not happen
+                return f"D{goal_idx + 1}".ljust(3)  # Ensure consistent width
+            return "D? ".ljust(3)  # Should not happen
 
         if isinstance(tile, PatchTile):
             color_sym = self._get_color_symbol(tile.color)

@@ -1,7 +1,21 @@
+from collections.abc import Callable
+
 from ortools.sat.python import cp_model
 
+from core.enums.design_goal import DesignGoalTiles
+from core.enums.edge_tile_settings import EdgeTileSettings
+from core.models.quilt_board import QuiltBoard
+from solvers.restructured_design_goals_solver import DesignGoalsModel
 
-def build_model(n, values, m, edges, add_additional_constraints=None):
+
+def build_model(
+    base_model: DesignGoalsModel | None = None,
+    n: int = 25,
+    values: list[int] = None,
+    m: list[dict] = None,
+    edges: list[tuple[int, int]] = None,
+    add_additional_constraints: Callable[[cp_model.CpModel, list[cp_model.IntVar], list[int]], None] = None,
+) -> DesignGoalsModel:
     """
     n: number of base vars x[0..n-1]
     values: [v1,..,vK] (K can be 6 as in your case)
@@ -11,12 +25,15 @@ def build_model(n, values, m, edges, add_additional_constraints=None):
     edges: list of undirected edges on subset indices, e.g. [(0,1),(1,2),...]
     add_additional_constraints: optional callback(model, x, values) to add your original constraints on x.
     """
+    model = base_model.model if base_model else cp_model.CpModel()
+
     model = cp_model.CpModel()
     k = len(values)
     s = len(m)
 
     # 1) Decision vars: x_i in allowed set
     x = [model.NewIntVarFromDomain(cp_model.Domain.FromValues(values), f"x[{i}]") for i in range(n)]
+    # color_variables = base_model.color_variables
 
     # 2) Literals eq[(i,k)] <=> (x[i] == values[k])
     eq = {}
@@ -129,159 +146,50 @@ def solve_model(model, x, y_s, y_sk, r, a, time_limit_sec=None, workers=8):
 # ---------------------------
 # Example usage
 # ---------------------------
-if __name__ == "__main__":
+def main():
     # Base variables and allowed values
-    n = 25
+    quilt_board = QuiltBoard(
+        edge_setting=EdgeTileSettings.BOARD_1,
+        design_goal_tiles=[
+            DesignGoalTiles.FOUR_TWO.value,
+            DesignGoalTiles.THREE_TWO_ONE.value,
+            DesignGoalTiles.THREE_PAIRS.value,
+        ],
+    )
+    patch_tiles = quilt_board.get_all_patch_tiles()
+    variable_indices = [i.abs for i in patch_tiles]
+
+    three_tile_sets = quilt_board.get_three_neighbor_tile_sets()
+    two_tile_sets = quilt_board.get_two_neighbor_tile_sets_near_edge()
+    tile_sets = three_tile_sets + two_tile_sets
+
+    set_graph_edges = []
+    for s_idx, _s in enumerate(tile_sets):
+        for t_idx, _t in enumerate(tile_sets):
+            # check if the two sets share any tiles
+            if any(tile in _t for tile in _s):
+                set_graph_edges.append((s_idx, t_idx))
+                continue
+
+            s_neighbors = [quilt_board._get_hex_neighbors(tile) for tile in _s]
+            s_neighbors = [neighbor for neighbor in s_neighbors if neighbor in _t]
+            s_neighbors = list(set(s_neighbors))
+
+            if any(neighbor in _t for neighbor in s_neighbors):
+                set_graph_edges.append((s_idx, t_idx))
+
+    n = 22
+    var_map = dict(zip(variable_indices, list(range(n)), strict=False))
     values = [10, 20, 30, 40, 50, 60]  # your v1..v6
-
-    # Generate 100 subsets with larger sizes and larger first groups
-    m = [
-        # First 20 subsets (original pattern)
-        {"subset": [0, 1, 2, 3, 4, 5], "t": 4},  # first=[0,1,2,3], second=[4,5]
-        {"first": [2, 5, 8, 11], "second": [6, 7, 1]},  # explicit with larger first group
-        {"subset": [4, 6, 0, 9, 12], "t": 3},  # first=[4,6,0], second=[9,12]
-        {"subset": [8, 9, 10, 11, 13, 14], "t": 4},  # first=[8,9,10,11], second=[13,14]
-        {"subset": [12, 13, 14, 15, 16], "t": 3},  # first=[12,13,14], second=[15,16]
-        {"subset": [15, 16, 17, 18, 19, 20], "t": 4},  # first=[15,16,17,18], second=[19,20]
-        {"subset": [19, 20, 21, 22, 23], "t": 3},  # first=[19,20,21], second=[22,23]
-        {"subset": [22, 23, 24, 3, 7, 11], "t": 4},  # first=[22,23,24,3], second=[7,11]
-        {"subset": [3, 7, 11, 17, 21], "t": 3},  # first=[3,7,11], second=[17,21]
-        {"subset": [5, 9, 13, 17, 1, 18], "t": 4},  # first=[5,9,13,17], second=[1,18]
-        {"subset": [1, 4, 8, 12, 16, 20], "t": 4},  # first=[1,4,8,12], second=[16,20]
-        {"subset": [14, 18, 22, 6, 10], "t": 3},  # first=[14,18,22], second=[6,10]
-        {"subset": [16, 20, 24, 0, 4, 8], "t": 4},  # first=[16,20,24,0], second=[4,8]
-        {"subset": [2, 6, 10, 14, 19, 23], "t": 4},  # first=[2,6,10,14], second=[19,23]
-        {"subset": [15, 19, 23, 1, 5], "t": 3},  # first=[15,19,23], second=[1,5]
-        {"subset": [0, 8, 16, 24, 2, 10], "t": 4},  # first=[0,8,16,24], second=[2,10]
-        {"subset": [1, 9, 17, 21, 13, 7], "t": 4},  # first=[1,9,17,21], second=[13,7]
-        {"subset": [3, 11, 19, 4, 12], "t": 3},  # first=[3,11,19], second=[4,12]
-        {"subset": [5, 13, 21, 18, 22, 6], "t": 4},  # first=[5,13,21,18], second=[22,6]
-        {"subset": [7, 15, 23, 9, 24], "t": 3},  # first=[7,15,23], second=[9,24]
-        # Additional 80 subsets to reach 100 total
-        {"subset": [0, 3, 6, 9, 12, 15], "t": 4},
-        {"subset": [1, 4, 7, 10, 13, 16], "t": 3},
-        {"subset": [2, 5, 8, 11, 14, 17], "t": 4},
-        {"subset": [18, 19, 20, 21, 22], "t": 3},
-        {"subset": [23, 24, 0, 1, 2], "t": 3},
-        {"first": [3, 4, 5, 6], "second": [7, 8, 9]},
-        {"subset": [10, 11, 12, 13, 14, 15], "t": 4},
-        {"subset": [16, 17, 18, 19, 20, 21], "t": 3},
-        {"subset": [22, 23, 24, 0, 1, 2], "t": 4},
-        {"subset": [3, 6, 9, 12, 15, 18], "t": 3},
-        {"subset": [21, 24, 2, 5, 8, 11], "t": 4},
-        {"subset": [14, 17, 20, 23, 1, 4], "t": 3},
-        {"first": [7, 10, 13, 16], "second": [19, 22, 0]},
-        {"subset": [3, 7, 11, 15, 19, 23], "t": 4},
-        {"subset": [2, 6, 10, 14, 18, 22], "t": 3},
-        {"subset": [1, 5, 9, 13, 17, 21], "t": 4},
-        {"subset": [0, 4, 8, 12, 16, 20], "t": 3},
-        {"subset": [24, 3, 7, 11, 15], "t": 3},
-        {"subset": [19, 23, 2, 6, 10], "t": 4},
-        {"subset": [14, 18, 22, 1, 5], "t": 3},
-        {"subset": [9, 13, 17, 21, 0, 4], "t": 4},
-        {"first": [8, 12, 16, 20], "second": [24, 3]},
-        {"subset": [7, 11, 15, 19, 23, 2], "t": 3},
-        {"subset": [6, 10, 14, 18, 22, 1], "t": 4},
-        {"subset": [5, 9, 13, 17, 21, 0], "t": 3},
-        {"subset": [4, 8, 12, 16, 20, 24], "t": 4},
-        {"subset": [3, 7, 11, 15, 19], "t": 3},
-        {"subset": [23, 2, 6, 10, 14], "t": 4},
-        {"subset": [18, 22, 1, 5, 9], "t": 3},
-        {"subset": [13, 17, 21, 0, 4, 8], "t": 4},
-        {"first": [12, 16, 20, 24], "second": [3, 7]},
-        {"subset": [11, 15, 19, 23, 2, 6], "t": 3},
-        {"subset": [10, 14, 18, 22, 1, 5], "t": 4},
-        {"subset": [9, 13, 17, 21, 0, 4], "t": 3},
-        {"subset": [8, 12, 16, 20, 24, 3], "t": 4},
-        {"subset": [7, 11, 15, 19, 23], "t": 3},
-        {"subset": [2, 6, 10, 14, 18], "t": 4},
-        {"subset": [22, 1, 5, 9, 13], "t": 3},
-        {"subset": [17, 21, 0, 4, 8, 12], "t": 4},
-        {"first": [16, 20, 24, 3], "second": [7, 11]},
-        {"subset": [15, 19, 23, 2, 6, 10], "t": 3},
-        {"subset": [14, 18, 22, 1, 5, 9], "t": 4},
-        {"subset": [13, 17, 21, 0, 4, 8], "t": 3},
-        {"subset": [12, 16, 20, 24, 3, 7], "t": 4},
-        {"subset": [11, 15, 19, 23, 2], "t": 3},
-        {"subset": [6, 10, 14, 18, 22], "t": 4},
-        {"subset": [1, 5, 9, 13, 17], "t": 3},
-        {"subset": [21, 0, 4, 8, 12, 16], "t": 4},
-        {"first": [20, 24, 3, 7], "second": [11, 15]},
-        {"subset": [19, 23, 2, 6, 10, 14], "t": 3},
-        {"subset": [18, 22, 1, 5, 9, 13], "t": 4},
-        {"subset": [17, 21, 0, 4, 8, 12], "t": 3},
-        {"subset": [16, 20, 24, 3, 7, 11], "t": 4},
-        {"subset": [15, 19, 23, 2, 6], "t": 3},
-        {"subset": [10, 14, 18, 22, 1], "t": 4},
-        {"subset": [5, 9, 13, 17, 21], "t": 3},
-        {"subset": [0, 4, 8, 12, 16, 20], "t": 4},
-        {"first": [24, 3, 7, 11], "second": [15, 19]},
-        {"subset": [23, 2, 6, 10, 14, 18], "t": 3},
-        {"subset": [22, 1, 5, 9, 13, 17], "t": 4},
-        {"subset": [21, 0, 4, 8, 12, 16], "t": 3},
-        {"subset": [20, 24, 3, 7, 11, 15], "t": 4},
-        {"subset": [19, 23, 2, 6, 10], "t": 3},
-        {"subset": [14, 18, 22, 1, 5], "t": 4},
-        {"subset": [9, 13, 17, 21, 0], "t": 3},
-        {"subset": [4, 8, 12, 16, 20, 24], "t": 4},
-        {"first": [3, 7, 11, 15], "second": [19, 23]},
-        {"subset": [2, 6, 10, 14, 18, 22], "t": 3},
-        {"subset": [1, 5, 9, 13, 17, 21], "t": 4},
-        {"subset": [0, 4, 8, 12, 16, 20], "t": 3},
-        {"subset": [24, 3, 7, 11, 15, 19], "t": 4},
-        {"subset": [23, 2, 6, 10, 14], "t": 3},
-        {"subset": [18, 22, 1, 5, 9], "t": 4},
-        {"subset": [13, 17, 21, 0, 4], "t": 3},
-        {"subset": [8, 12, 16, 20, 24, 3], "t": 4},
-        {"first": [7, 11, 15, 19], "second": [23, 2]},
-        {"subset": [6, 10, 14, 18, 22, 1], "t": 3},
-        {"subset": [5, 9, 13, 17, 21, 0], "t": 4},
-        {"subset": [4, 8, 12, 16, 20, 24], "t": 3},
-        {"subset": [3, 7, 11, 15, 19, 23], "t": 4},
-        {"subset": [2, 6, 10, 14, 18], "t": 3},
-        {"subset": [22, 1, 5, 9, 13], "t": 4},
-        {"subset": [17, 21, 0, 4, 8], "t": 3},
-        {"subset": [12, 16, 20, 24, 3, 7], "t": 4},
-        {"first": [11, 15, 19, 23], "second": [2, 6]},
-        {"subset": [10, 14, 18, 22, 1, 5], "t": 3},
-        {"subset": [9, 13, 17, 21, 0, 4], "t": 4},
-        {"subset": [8, 12, 16, 20, 24, 3], "t": 3},
-        {"subset": [7, 11, 15, 19, 23, 2], "t": 4},
-        {"subset": [6, 10, 14, 18, 22], "t": 3},
-        {"subset": [1, 5, 9, 13, 17], "t": 4},
-        {"subset": [21, 0, 4, 8, 12], "t": 3},
-        {"subset": [16, 20, 24, 3, 7, 11], "t": 4},
-        {"first": [15, 19, 23, 2], "second": [6, 10]},
-        {"subset": [14, 18, 22, 1, 5, 9], "t": 3},
-        {"subset": [13, 17, 21, 0, 4, 8], "t": 4},
-        {"subset": [12, 16, 20, 24, 3, 7], "t": 3},
-        {"subset": [11, 15, 19, 23, 2, 6], "t": 4},
-        {"subset": [10, 14, 18, 22, 1], "t": 3},
-        {"subset": [5, 9, 13, 17, 21], "t": 4},
-        {"subset": [0, 4, 8, 12, 16], "t": 3},
-        {"subset": [20, 24, 3, 7, 11, 15], "t": 4},
-        {"first": [19, 23, 2, 6], "second": [10, 14]},
-        {"subset": [18, 22, 1, 5, 9, 13], "t": 3},
-        {"subset": [17, 21, 0, 4, 8, 12], "t": 4},
-    ]
-
-    for s in m:
-        if "subset" in s:
-            s["first"] = s["subset"][: s["t"]]
-
-    edges = []
-    for i, s_0 in enumerate(m):
-        for j, s_1 in enumerate(m):
-            if i < j:
-                if any(x in s_1["first"] for x in s_0["first"]):
-                    edges.append((i, j))
+    m = [{"first": [var_map[tile.abs] for tile in _s], "second": []} for _s in tile_sets]
 
     def add_constraints(model, x, values):
         # Sample extras — replace with your real constraints
-        model.AddAllDifferent([x[0], x[1], x[2]])
-        model.Add(x[5] + x[6] <= x[7] + values[-1])
+        ...
 
-    model, x, y_s, y_sk, r, a = build_model(n, values, m, edges, add_additional_constraints=add_constraints)
+    model, x, y_s, y_sk, r, a = build_model(
+        None, n, values, m, set_graph_edges, add_additional_constraints=add_constraints
+    )
     res = solve_model(model, x, y_s, y_sk, r, a, time_limit_sec=200)
 
     print("Status:", res["status"])
@@ -290,3 +198,7 @@ if __name__ == "__main__":
         print("x:", res["x"])
         print("winners yS:", res["yS"])
         print("component (k, representative) per winning subset:", res["component_of_subset"])
+
+
+if __name__ == "__main__":
+    main()
