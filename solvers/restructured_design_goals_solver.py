@@ -5,6 +5,7 @@ from ortools.sat.python import cp_model
 from pydantic import BaseModel
 
 from core.enums.design_goal import DesignGoalTiles
+from core.enums.edge_tile_settings import EdgeTileSettings
 from core.models.design_goal_tile import DesignGoalTile
 from core.models.quilt_board import QuiltBoard
 
@@ -223,6 +224,7 @@ def solve_combined(
 def build_model(
     model: cp_model.CpModel | None = None,
     v: list[int] = None,
+    edge_setting: EdgeTileSettings = EdgeTileSettings.BOARD_1,
     m1: DesignGoalTile = DesignGoalTiles.THREE_PAIRS.value,
     m2: DesignGoalTile = DesignGoalTiles.THREE_TWO_ONE.value,
     m3: DesignGoalTile = DesignGoalTiles.FOUR_TWO.value,
@@ -248,7 +250,7 @@ def build_model(
 
     dom = cp_model.Domain.FromValues(v)
 
-    board = QuiltBoard(design_goal_tiles=[m1, m2, m3])
+    board = QuiltBoard(edge_setting=edge_setting, design_goal_tiles=[m1, m2, m3])
     patch_tiles = board.get_all_patch_tiles()
 
     variable_indices = [i.abs for i in patch_tiles]
@@ -281,13 +283,6 @@ def build_model(
     b_patterns_2 = [b_pattern_map[i] for i in variable_indices_2]
     b_colors_2 = [b_color_map[i] for i in variable_indices_2]
 
-    # bx = add_channeling(model, x, v, "X")
-    # bt = add_channeling(model, t, v, "T")
-    # bp = add_channeling(model, p, v, "P")
-    # bxp = add_channeling(model, xp, v, "Xp")
-    # btp = add_channeling(model, tp, v, "Tp")
-    # bpp = add_channeling(model, pp, v, "Pp")
-
     # Patterns (same patterns on primed/unprimed sets)
     add_pattern(model, b_patterns_0, m1.config_numbers, "P")
     add_pattern(model, b_patterns_1, m2.config_numbers, "P")
@@ -296,27 +291,7 @@ def build_model(
     add_pattern(model, b_colors_1, m2.config_numbers, "C")
     add_pattern(model, b_colors_2, m3.config_numbers, "C")
 
-    # # Cross equalities (1-based in prompt → 0-based here)
-    # # Unprimed: x3=t1, x4=t6, x5=p2
-    # model.Add(x[2] == t[0])
-    # model.Add(x[3] == t[5])
-    # model.Add(x[4] == p[1])
-    # # Primed:   x'3=t'1, x'4=t'6, x'5=p'2
-    # model.Add(xp[2] == tp[0])
-    # model.Add(xp[3] == tp[5])
-    # model.Add(xp[4] == pp[1])
-
     pair_indicators = add_pair_indicators(model, b_patterns, b_colors, "")
-
-    # # Pair indicators for (x[i],xp[i]), (t[i],tp[i]), (p[i],pp[i])
-    # pair_x = add_pair_indicators(model, bx, bxp, "X")
-    # pair_t = add_pair_indicators(model, bt, btp, "T")
-    # pair_p = add_pair_indicators(model, bp, bpp, "P")
-
-    # # Cap each ordered pair across the 15 counted positions
-    # ix = range(n)  # all 6
-    # it = [1, 2, 3, 4]  # exclude i=0 (t1) and i=5 (t6)
-    # ip = [0, 2, 3, 4, 5]  # exclude i=1 (p2)
 
     for _k in range(k):
         for _l in range(k):

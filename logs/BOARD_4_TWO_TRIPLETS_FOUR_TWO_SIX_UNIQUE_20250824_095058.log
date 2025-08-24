@@ -1,0 +1,80 @@
+================================================================================
+CALICO SOLVER - BUTTONS OPTIMIZATION RESULTS
+================================================================================
+Board Configuration: BOARD_4
+Design Goals: TWO_TRIPLETS -> FOUR_TWO -> SIX_UNIQUE
+Timestamp: 2025-08-24 09:50:58
+================================================================================
+
+Status: OPTIMAL
+Objective (k-consistent activated components): 9.0
+Bonus achieved: 1 (Yes)
+All color types are activated!
+
+QUILT BOARD SOLUTION:
+------------------------------------------------------------
+Calico Quilt Board (7x7 Hexagonal)
+Legend: [Color][Pattern] | G1,G2,G3=Design Goals | ---=Empty | Edge tiles shown
+Colors: B=Blue, G=Green, Y=Yellow, N=Navy, P=Purple, K=Pink
+Note: Odd rows (1,3,5) are shifted right to show hexagonal layout
+
+G❋    B✿    Y▣    P●    B🌿   G🌾   K❋   (row 0)
+   K🌾   Y🌾   P🌾   P▣    G●    G●    N✿   (row 1)
+P🌿   K🌿   Y🌾   D1    Y▣    B▣    B▣   (row 2)
+   Y●    K▣    P🌾   Y▣    D2    B✿    G●   (row 3)
+G✿    G❋    D3    Y✿    Y▣    Y✿    K🌿  (row 4)
+   B❋    B🌿   N●    N▣    K🌿   K❋    N🌾  (row 5)
+N🌿   P🌾   Y🌿   N●    K▣    P✿    Y❋   (row 6)
+
+(0)  (1)  (2)  (3)  (4)  (5)  (6)   (columns)
+
+DETAILED SCORING INFORMATION:
+------------------------------------------------------------
+Maximum Score Achieved: 9.0
+This represents 9 k-consistent activated components
+
+Representative Components (8 total):
+--------------------------------------------------
+Component 1: Subset 35 with YELLOW
+  Tiles: (3,3):YELLOW-Stripes, (3,4):YELLOW-Flowers, (4,4):YELLOW-Stripes
+
+Component 2: Subset 78 with PINK
+  Tiles: (1,2):PINK-Vines, (1,3):PINK-Stripes
+
+Component 3: Subset 80 with PINK
+  Tiles: (4,5):PINK-Vines, (5,5):PINK-Quatrefoil
+
+Component 4: Subset 82 with PURPLE
+  Tiles: (2,1):PURPLE-Ferns, (3,1):PURPLE-Stripes
+
+Component 5: Subset 88 with GREEN
+  Tiles: (4,1):GREEN-Dots, (5,1):GREEN-Dots
+
+Component 6: Subset 91 with YELLOW
+  Tiles: (1,1):YELLOW-Ferns, (2,2):YELLOW-Ferns
+
+Component 7: Subset 99 with BLUE
+  Tiles: (5,2):BLUE-Stripes, (5,3):BLUE-Flowers
+
+Component 8: Subset 101 with NAVY
+  Tiles: (2,5):NAVY-Dots, (3,5):NAVY-Stripes
+
+Solution Summary:
+------------------------------
+Color Distribution:
+  BLUE: 3 tiles
+  GREEN: 3 tiles
+  YELLOW: 7 tiles
+  NAVY: 2 tiles
+  PURPLE: 3 tiles
+  PINK: 4 tiles
+
+Pattern Distribution:
+  Stripes: 7 tiles
+  Dots: 3 tiles
+  Flowers: 3 tiles
+  Vines: 3 tiles
+  Quatrefoil: 2 tiles
+  Ferns: 4 tiles
+
+================================================================================

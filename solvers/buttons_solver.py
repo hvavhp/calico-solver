@@ -1,16 +1,26 @@
+import itertools
+from datetime import datetime
+
 from ortools.sat.python import cp_model
 
 from core.enums.color import COLOR_MAP, Color
 from core.enums.design_goal import DesignGoalTiles
 from core.enums.edge_tile_settings import EdgeTileSettings
 from core.enums.pattern import Pattern
+from core.models.design_goal_tile import DesignGoalTile
 from core.models.patch_tile import PatchTile
 from core.models.quilt_board import HexPosition, QuiltBoard
 from solvers.restructured_design_goals_solver import DesignGoalsModel
 from solvers.restructured_design_goals_solver import build_model as design_goals_build_model
 
 
-def build_model(base_model: DesignGoalsModel | None = None) -> DesignGoalsModel:
+def build_model(
+    base_model: DesignGoalsModel | None = None,
+    board_setting: EdgeTileSettings = EdgeTileSettings.BOARD_1,
+    m1: DesignGoalTile = DesignGoalTiles.FOUR_TWO.value,
+    m2: DesignGoalTile = DesignGoalTiles.SIX_UNIQUE.value,
+    m3: DesignGoalTile = DesignGoalTiles.TWO_TRIPLETS.value,
+) -> DesignGoalsModel:
     """
     n: number of base vars x[0..n-1]
     values: [v1,..,vK] (K can be 6 as in your case)
@@ -21,12 +31,8 @@ def build_model(base_model: DesignGoalsModel | None = None) -> DesignGoalsModel:
     add_additional_constraints: optional callback(model, x, values) to add your original constraints on x.
     """
     quilt_board = QuiltBoard(
-        edge_setting=EdgeTileSettings.BOARD_1,
-        design_goal_tiles=[
-            DesignGoalTiles.FOUR_TWO.value,
-            DesignGoalTiles.THREE_TWO_ONE.value,
-            DesignGoalTiles.THREE_PAIRS.value,
-        ],
+        edge_setting=board_setting,
+        design_goal_tiles=[m1, m2, m3],
     )
 
     model = base_model.model
@@ -122,13 +128,26 @@ def build_model(base_model: DesignGoalsModel | None = None) -> DesignGoalsModel:
             for _color in range(len(colors)):
                 model.Add(a[u][_r][_color] == a[v][_r][_color]).OnlyEnforceIf([y_sk[u][_color], y_sk[v][_color]])
 
+    # Model rainbow score
+    # mark[_k] == 1  <=> color _k appears in at least one of the buttons
+    mark = [model.NewBoolVar(f"u[{_k}]") for _k in range(len(colors))]
+    for _k in range(len(colors)):
+        model.AddMaxEquality(mark[_k], [r[_r][_k] for _r in range(s)])
+
+    # bonus == 1  <=> all colors appear in at least one of the buttons
+    bonus = model.NewBoolVar("bonus")
+    for _k in range(len(colors)):
+        model.Add(bonus <= mark[_k])
+
+    model.Add(bonus >= sum(mark) - (len(colors) - 1))
+
     # Objective: total number of k-consistent activated components
-    model.Maximize(sum(r[_r][_k] for _r in range(s) for _k in range(len(colors))))
+    model.Maximize(sum(r[_r][_k] for _r in range(s) for _k in range(len(colors))) + bonus)
 
-    return model, x, y_s, y_sk, r, a
+    return model, x, y_s, y_sk, r, a, mark, bonus
 
 
-def solve_model(model, base_model: DesignGoalsModel, x, y_s, y_sk, r, a, time_limit_sec=None, workers=8):
+def solve_model(model, base_model: DesignGoalsModel, x, y_s, y_sk, r, a, mark, bonus, time_limit_sec=None, workers=8):
     solver = cp_model.CpSolver()
     if time_limit_sec is not None:
         solver.parameters.max_time_in_seconds = time_limit_sec
@@ -137,6 +156,7 @@ def solve_model(model, base_model: DesignGoalsModel, x, y_s, y_sk, r, a, time_li
     status = solver.Solve(model)
     out = {"status": solver.StatusName(status)}
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        out["bonus"] = solver.Value(bonus)
         out["objective"] = solver.ObjectiveValue()
         out["x"] = [solver.Value(v) for v in x.values()]
         out["yS"] = [solver.Value(v) for v in y_s]
@@ -209,6 +229,14 @@ def create_solution_board(base_board: QuiltBoard, result: dict, patch_tiles: lis
     solved_colors = result.get("solved_colors", {})
     solved_patterns = result.get("solved_patterns", {})
 
+    # Print bonus information
+    bonus = result.get("bonus", 0)
+    print(f"Bonus achieved: {bonus} ({'Yes' if bonus else 'No'})")
+    if bonus:
+        print("All color types are activated!")
+    else:
+        print("Not all color types are activated.")
+
     # Fill in the patch tiles with solved colors and patterns
     for patch_pos in patch_tiles:
         abs_pos = patch_pos.abs
@@ -238,6 +266,162 @@ def create_solution_board(base_board: QuiltBoard, result: dict, patch_tiles: lis
         solution_board.tiles_by_pos[patch_pos] = patch_tile
 
     return solution_board
+
+
+def save_result_to_log(
+    board_name: str, design_goals: tuple, result: dict, board: QuiltBoard, patch_tiles: list[HexPosition]
+) -> str:
+    """Save the result to a log file with proper naming.
+
+    Args:
+        board_name: The name of the board configuration (e.g., "BOARD_1")
+        design_goals: Tuple of design goal names (e.g., ("FOUR_TWO", "SIX_UNIQUE", "TWO_TRIPLETS"))
+        result: The solver result dictionary
+        board: The QuiltBoard used for the model
+        patch_tiles: List of HexPosition objects for patch tiles
+
+    Returns:
+        The filename of the created log file
+    """
+    # Create filename
+    design_goal_str = "_".join(design_goals)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"logs/{board_name}_{design_goal_str}_{timestamp}.log"
+
+    with open(filename, "w") as f:
+        # Write header information
+        f.write("=" * 80 + "\n")
+        f.write("CALICO SOLVER - BUTTONS OPTIMIZATION RESULTS\n")
+        f.write("=" * 80 + "\n")
+        f.write(f"Board Configuration: {board_name}\n")
+        f.write(f"Design Goals: {' -> '.join(design_goals)}\n")
+        f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("=" * 80 + "\n\n")
+
+        # Write solver status and objective
+        f.write(f"Status: {result['status']}\n")
+        if "objective" in result:
+            f.write(f"Objective (k-consistent activated components): {result['objective']}\n")
+            f.write(f"Bonus achieved: {result.get('bonus', 0)} ({'Yes' if result.get('bonus', 0) else 'No'})\n")
+            if result.get("bonus", 0):
+                f.write("All color types are activated!\n")
+            else:
+                f.write("Not all color types are activated.\n")
+            f.write("\n")
+
+            # Create solution board for display
+            solution_board = create_solution_board(board, result, patch_tiles)
+            f.write("QUILT BOARD SOLUTION:\n")
+            f.write("-" * 60 + "\n")
+            f.write(solution_board.pretty_print() + "\n\n")
+
+            # Write detailed scoring information
+            f.write("DETAILED SCORING INFORMATION:\n")
+            f.write("-" * 60 + "\n")
+
+            # Get scoring details (similar to display_scoring_details but write to file)
+            colors = list(COLOR_MAP.keys())
+            color_names = list(Color.__members__.keys())
+
+            # Get the tile sets used in the model
+            three_tile_sets = board.get_three_neighbor_tile_sets()
+            two_tile_sets = board.get_two_neighbor_tile_sets_near_edge()
+            all_tile_sets = three_tile_sets + two_tile_sets
+
+            # Get solved colors and patterns
+            solved_colors = result.get("solved_colors", {})
+            solved_patterns = result.get("solved_patterns", {})
+
+            # Create mapping from patch tile to its solved color and pattern
+            tile_colors = {}
+            tile_patterns = {}
+            patterns = list(Pattern)
+
+            for patch_pos in patch_tiles:
+                abs_pos = patch_pos.abs
+                color_var_name = f"C_{abs_pos}"
+                pattern_var_name = f"P_{abs_pos}"
+
+                # Get solved color
+                if color_var_name in solved_colors:
+                    color_value = solved_colors[color_var_name]
+                    solved_color = colors[color_value]
+                    tile_colors[patch_pos] = solved_color
+
+                # Get solved pattern
+                if pattern_var_name in solved_patterns:
+                    pattern_value = solved_patterns[pattern_var_name]
+                    solved_pattern = patterns[pattern_value]
+                    tile_patterns[patch_pos] = solved_pattern
+
+            # Show maximum score
+            max_score = result["objective"]
+            f.write(f"Maximum Score Achieved: {max_score}\n")
+            f.write(f"This represents {int(max_score)} k-consistent activated components\n\n")
+
+            # Only show representative subsets where r[_r][_color] = 1
+            representatives = result.get("representatives", [])
+
+            if representatives:
+                f.write(f"Representative Components ({len(representatives)} total):\n")
+                f.write("-" * 50 + "\n")
+
+                for idx, (subset_idx, color_idx) in enumerate(representatives, 1):
+                    tile_positions = all_tile_sets[subset_idx]
+                    color_name = color_names[color_idx]
+
+                    f.write(f"Component {idx}: Subset {subset_idx} with {color_name}\n")
+
+                    # Show tile positions with their colors and patterns
+                    tile_details = []
+                    for pos in tile_positions:
+                        color = tile_colors.get(pos)
+                        pattern = tile_patterns.get(pos)
+                        if color and pattern:
+                            actual_color_name = color_names[colors.index(color)]
+                            pattern_name = pattern.value.title()
+                            tile_details.append(f"({pos.q},{pos.r}):{actual_color_name}-{pattern_name}")
+                        elif color:
+                            actual_color_name = color_names[colors.index(color)]
+                            tile_details.append(f"({pos.q},{pos.r}):{actual_color_name}")
+
+                    f.write(f"  Tiles: {', '.join(tile_details)}\n\n")
+            else:
+                f.write("No representative components found.\n\n")
+
+            # Show color and pattern distribution
+            f.write("Solution Summary:\n")
+            f.write("-" * 30 + "\n")
+
+            # Color distribution
+            color_counts = {}
+            for color in tile_colors.values():
+                color_counts[color] = color_counts.get(color, 0) + 1
+
+            f.write("Color Distribution:\n")
+            for color in colors:
+                count = color_counts.get(color, 0)
+                color_name = color_names[colors.index(color)]
+                f.write(f"  {color_name}: {count} tiles\n")
+
+            f.write("\n")
+
+            # Pattern distribution
+            pattern_counts = {}
+            for pattern in tile_patterns.values():
+                pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
+
+            f.write("Pattern Distribution:\n")
+            for pattern in patterns:
+                count = pattern_counts.get(pattern, 0)
+                pattern_name = pattern.value.title()
+                f.write(f"  {pattern_name}: {count} tiles\n")
+        else:
+            f.write("No solution found.\n")
+
+        f.write("\n" + "=" * 80 + "\n")
+
+    return filename
 
 
 def display_scoring_details(board: QuiltBoard, result: dict, patch_tiles: list[HexPosition]) -> None:
@@ -349,71 +533,113 @@ def display_scoring_details(board: QuiltBoard, result: dict, patch_tiles: list[H
         print(f"  {pattern_name}: {count} tiles")
 
 
-def main():
+def run_single_configuration(board_setting: EdgeTileSettings, design_goals: tuple) -> dict:
+    """Run solver for a single board and design goal configuration.
+
+    Args:
+        board_setting: The board edge configuration to use
+        design_goals: Tuple of three design goal tiles (e.g., (m1, m2, m3))
+
+    Returns:
+        Dictionary containing the result and metadata
+    """
+    print(f"Running configuration: {board_setting.name} with goals {[dg.name for dg in design_goals]}")
+
     model = cp_model.CpModel()
     v = [COLOR_MAP[color] for color in Color]
 
-    m1 = DesignGoalTiles.FOUR_TWO.value
-    m2 = DesignGoalTiles.SIX_UNIQUE.value
-    m3 = DesignGoalTiles.TWO_TRIPLETS.value
+    m1, m2, m3 = design_goals
 
-    board = QuiltBoard(
-        design_goal_tiles=[
-            m1,
-            m2,
-            m3,
-        ]
+    board = QuiltBoard(edge_setting=board_setting, design_goal_tiles=[m1.value, m2.value, m3.value])
+
+    base_model = design_goals_build_model(
+        model, v, board_setting, m1.value, m2.value, m3.value, cap=3, time_limit_s=200
     )
 
-    base_model = design_goals_build_model(model, v, m1, m2, m3, cap=3, time_limit_s=200)
+    model, x, y_s, y_sk, r, a, mark, bonus = build_model(base_model, board_setting, m1.value, m2.value, m3.value)
+    res = solve_model(model, base_model, x, y_s, y_sk, r, a, mark, bonus, time_limit_sec=200)
 
-    # patch_tiles = board.get_all_patch_tiles()
+    # Add metadata to result
+    res["board_setting"] = board_setting.name
+    res["design_goals"] = tuple(dg.name for dg in design_goals)
+    res["board"] = board
+    res["patch_tiles"] = board.get_all_patch_tiles()
 
-    # variable_indices = [i.abs for i in patch_tiles]
-    # color_variable_names = [f"C_{i.abs}" for i in patch_tiles]
+    return res
 
-    # color_variables = {name: model.NewIntVarFromDomain(dom, name) for name in color_variable_names}
-    # b_colors = add_channeling(model, list(color_variables.values()), variable_indices, v, "C")
-    # b_color_map = dict(zip(variable_indices, b_colors, strict=False))
 
-    # base_model = DesignGoalsModel(
-    #     model=model,
-    #     pattern_variables={},
-    #     color_variables=color_variables,
-    #     z_pattern_variables={},
-    #     z_color_variables=b_color_map,
-    #     pair_indicators=[],
-    #     variable_indices=variable_indices,
-    #     k=len(v),
-    #     design_goal_tiles=board.design_goal_tiles,
-    #     cap=3,
-    #     time_limit_s=200,
-    # )
+def main():
+    """Main function that runs all board configurations and design goal permutations."""
+    print("Starting comprehensive buttons solver analysis...")
+    print("=" * 80)
 
-    model, x, y_s, y_sk, r, a = build_model(base_model)
-    res = solve_model(model, base_model, x, y_s, y_sk, r, a, time_limit_sec=200)
+    # Define all board settings
+    all_board_settings = [
+        EdgeTileSettings.BOARD_1,
+        EdgeTileSettings.BOARD_2,
+        EdgeTileSettings.BOARD_3,
+        EdgeTileSettings.BOARD_4,
+    ]
 
-    print("Status:", res["status"])
-    if "objective" in res:
-        print("Objective (k-consistent activated components):", res["objective"])
-        print("x:", res["x"])
-        print("winners yS:", res["yS"])
-        print("component (k, representative) per winning subset:", res["component_of_subset"])
+    # Define the three design goal tiles to permute
+    design_goal_tiles = [DesignGoalTiles.FOUR_TWO, DesignGoalTiles.SIX_UNIQUE, DesignGoalTiles.TWO_TRIPLETS]
 
-        # Pretty print the solution board
-        print("\n" + "=" * 60)
-        print("QUILT BOARD SOLUTION")
-        print("=" * 60)
+    # Generate all permutations of the design goal tiles (3! = 6 permutations)
+    design_goal_permutations = list(itertools.permutations(design_goal_tiles))
 
-        # Create a solution board with the solved colors and patterns
-        solution_board = create_solution_board(board, res, board.get_all_patch_tiles())
-        print(solution_board.pretty_print())
+    total_runs = len(all_board_settings) * len(design_goal_permutations)
+    print(f"Total configurations to run: {total_runs}")
+    print(f"Board settings: {len(all_board_settings)} ({[bs.name for bs in all_board_settings]})")
+    print(f"Design goal permutations: {len(design_goal_permutations)}")
+    print("=" * 80)
 
-        # Display scoring details
-        print("\n" + "=" * 60)
-        print("SCORING DETAILS")
-        print("=" * 60)
-        display_scoring_details(board, res, board.get_all_patch_tiles())
+    successful_runs = 0
+    failed_runs = 0
+    log_files = []
+
+    run_count = 0
+    for board_setting in all_board_settings:
+        for design_goals in design_goal_permutations:
+            run_count += 1
+            print(f"\n[{run_count}/{total_runs}] Processing configuration...")
+
+            # Run the solver for this configuration
+            result = run_single_configuration(board_setting, design_goals)
+
+            # Save result to log file
+            board_name = result["board_setting"]
+            design_goal_names = result["design_goals"]
+            log_filename = save_result_to_log(
+                board_name, design_goal_names, result, result["board"], result["patch_tiles"]
+            )
+
+            log_files.append(log_filename)
+
+            # Print summary to console
+            status = result["status"]
+            if "objective" in result:
+                objective = result["objective"]
+                bonus = result.get("bonus", 0)
+                print(f"✓ SUCCESS: Status={status}, Objective={objective}, Bonus={'Yes' if bonus else 'No'}")
+                successful_runs += 1
+            else:
+                print(f"✗ FAILED: Status={status} - No solution found")
+                failed_runs += 1
+
+            print(f"  Log saved to: {log_filename}")
+
+    # Print final summary
+    print("\n" + "=" * 80)
+    print("COMPREHENSIVE ANALYSIS COMPLETE")
+    print("=" * 80)
+    print(f"Total runs: {total_runs}")
+    print(f"Successful runs: {successful_runs}")
+    print(f"Failed runs: {failed_runs}")
+    print(f"Success rate: {successful_runs / total_runs * 100:.1f}%")
+    print("\nAll log files saved in the 'logs/' directory:")
+    for log_file in log_files:
+        print(f"  - {log_file}")
+    print("=" * 80)
 
 
 if __name__ == "__main__":
