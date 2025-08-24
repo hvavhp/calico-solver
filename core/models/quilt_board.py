@@ -32,6 +32,79 @@ class HexPosition(BaseModel):
     def from_abs(abs_pos: int) -> HexPosition:
         return HexPosition(q=abs_pos % 7, r=abs_pos // 7)
 
+    @property
+    def is_valid(self) -> bool:
+        return 0 <= self.q <= 6 and 0 <= self.r <= 6
+
+    def is_neighbor(self, other: HexPosition) -> bool:
+        if self.q == other.q or self.r == other.r:
+            return True
+        if self.r % 2 == 0 and self.r == other.r + 1 and self.q == other.q + 1:
+            return True
+        if self.r % 2 == 0 and self.r == other.r - 1 and self.q == other.q + 1:
+            return True
+        if self.r % 2 == 1 and self.r == other.r - 1 and self.q == other.q - 1:
+            return True
+        return self.r % 2 == 1 and self.r == other.r + 1 and self.q == other.q - 1
+
+    def get_neighbors(self, filtered: bool = True) -> list[HexPosition]:
+        """Get all 6 potential neighbors of this hexagonal position.
+
+        In this hexagonal grid, rows 0,2,4,6 are aligned, while rows 1,3,5 are shifted right.
+        This requires different neighbor calculations for even vs odd rows.
+
+        Returns:
+            List of neighboring hex positions (may include positions outside board bounds)
+        """
+        q, r = self.q, self.r
+
+        if r % 2 == 0:  # Even rows (0, 2, 4, 6) - aligned
+            neighbor_offsets = [
+                (-1, -1),  # northwest
+                (0, -1),  # northeast
+                (-1, 0),  # east
+                (1, 0),  # west
+                (-1, 1),  # southeast
+                (0, 1),  # southwest
+            ]
+        else:  # Odd rows (1, 3, 5) - shifted right
+            neighbor_offsets = [
+                (0, -1),  # northwest
+                (1, -1),  # northeast
+                (-1, 0),  # east
+                (1, 0),  # west
+                (0, 1),  # southeast
+                (1, 1),  # southwest
+            ]
+
+        neighbors = []
+        for dq, dr in neighbor_offsets:
+            if not filtered:
+                neighbors.append(HexPosition(q=q + dq, r=r + dr))
+                continue
+            if 0 <= q + dq <= 6 and 0 <= r + dr <= 6:
+                neighbors.append(HexPosition(q=q + dq, r=r + dr))
+
+        return neighbors
+
+    def is_edge_position(self) -> bool:
+        """Check if this position is an edge tile position.
+
+        Returns:
+            True if the position is on the border of the 7x7 board
+        """
+        # Check if position is on the border of the 7x7 board
+        return self.q == 0 or self.q == 6 or self.r == 0 or self.r == 6
+
+    def is_design_goal_position(self) -> bool:
+        """Check if this position is a design goal tile position.
+
+        Returns:
+            True if the position is a design goal tile
+        """
+        design_goal_positions = [HexPosition(q=3, r=2), HexPosition(q=4, r=3), HexPosition(q=2, r=4)]
+        return self in design_goal_positions
+
 
 class QuiltBoard(BaseModel):
     """A player's quilt board mapping hex positions to placed tiles.
@@ -101,72 +174,6 @@ class QuiltBoard(BaseModel):
         for pos, goal_tile in zip(design_goal_positions, self.design_goal_tiles, strict=True):
             self.tiles_by_pos[pos] = goal_tile
 
-    def _get_hex_neighbors(self, pos: HexPosition) -> list[HexPosition]:
-        """Get all 6 potential neighbors of a hexagonal tile.
-
-        In this hexagonal grid, rows 0,2,4,6 are aligned, while rows 1,3,5 are shifted right.
-        This requires different neighbor calculations for even vs odd rows.
-
-        Args:
-            pos: The hex position to find neighbors for
-
-        Returns:
-            List of neighboring hex positions (may include positions outside board bounds)
-        """
-        q, r = pos.q, pos.r
-
-        if r % 2 == 0:  # Even rows (0, 2, 4, 6) - aligned
-            neighbor_offsets = [
-                (-1, -1),  # northwest
-                (0, -1),  # northeast
-                (-1, 0),  # east
-                (1, 0),  # west
-                (-1, 1),  # southeast
-                (0, 1),  # southwest
-            ]
-        else:  # Odd rows (1, 3, 5) - shifted right
-            neighbor_offsets = [
-                (0, -1),  # northwest
-                (1, -1),  # northeast
-                (-1, 0),  # east
-                (1, 0),  # west
-                (0, 1),  # southeast
-                (1, 1),  # southwest
-            ]
-
-        neighbors = []
-        for dq, dr in neighbor_offsets:
-            if 0 <= q + dq <= 6 and 0 <= r + dr <= 6:
-                neighbors.append(HexPosition(q=q + dq, r=r + dr))
-
-        return neighbors
-
-    def _is_edge_position(self, pos: HexPosition) -> bool:
-        """Check if a position is an edge tile position.
-
-        Args:
-            pos: The position to check
-
-        Returns:
-            True if the position is an edge tile
-        """
-        q, r = pos.q, pos.r
-
-        # Check if position is on the border of the 7x7 board
-        return q == 0 or q == 6 or r == 0 or r == 6
-
-    def _is_design_goal_position(self, pos: HexPosition) -> bool:
-        """Check if a position is a design goal tile position.
-
-        Args:
-            pos: The position to check
-
-        Returns:
-            True if the position is a design goal tile
-        """
-        design_goal_positions = [HexPosition(q=3, r=2), HexPosition(q=4, r=3), HexPosition(q=2, r=4)]
-        return pos in design_goal_positions
-
     def get_three_neighbor_tile_sets(self) -> list[list[HexPosition]]:
         """Get all possible sets of three neighboring tiles, excluding edge and design goal tiles.
 
@@ -175,13 +182,13 @@ class QuiltBoard(BaseModel):
             Each set represents 3 tiles that are all connected to each other.
         """
         # Get all valid (non-edge, non-design-goal) positions
-        valid_positions = []
+        valid_positions: list[HexPosition] = []
         for q in range(7):
             for r in range(7):
                 pos = HexPosition(q=q, r=r)
-                if self._is_edge_position(pos):
+                if pos.is_edge_position():
                     continue
-                if self._is_design_goal_position(pos):
+                if pos.is_design_goal_position():
                     continue
                 valid_positions.append(pos)
 
@@ -189,20 +196,20 @@ class QuiltBoard(BaseModel):
 
         # For each valid position, find all triangular combinations with its neighbors
         for _i, pos1 in enumerate(valid_positions):
-            neighbors = [n for n in self._get_hex_neighbors(pos1) if n in valid_positions]
+            neighbors = [n for n in pos1.get_neighbors() if n in valid_positions]
 
             # For each pair of neighbors of pos1, check if they are also neighbors of each other
             for j, pos2 in enumerate(neighbors):
-                if self._is_edge_position(pos2):
+                if pos2.is_edge_position():
                     continue
-                if self._is_design_goal_position(pos2):
+                if pos2.is_design_goal_position():
                     continue
                 for k, pos3 in enumerate(neighbors):
                     if k == j:
                         continue
-                    if self._is_edge_position(pos3):
+                    if pos3.is_edge_position():
                         continue
-                    if self._is_design_goal_position(pos3):
+                    if pos3.is_design_goal_position():
                         continue
 
                     tile_set = sorted([pos1, pos2, pos3], key=lambda p: (p.q, p.r))
@@ -219,7 +226,7 @@ class QuiltBoard(BaseModel):
         for q in range(7):
             for r in range(7):
                 pos = HexPosition(q=q, r=r)
-                if not self._is_edge_position(pos) and not self._is_design_goal_position(pos):
+                if not pos.is_edge_position() and not pos.is_design_goal_position():
                     ret.append(pos)
         return ret
 
@@ -227,7 +234,7 @@ class QuiltBoard(BaseModel):
         design_goal_positions = self.get_design_goal_tile_positions()
         if goal_tile_no is not None:
             design_goal_positions = [design_goal_positions[goal_tile_no]]
-        neighbors = [self._get_hex_neighbors(tile) for tile in design_goal_positions]
+        neighbors = [tile.get_neighbors() for tile in design_goal_positions]
         neighbors = [n for neighbor_list in neighbors for n in neighbor_list]
         neighbors = list(set(neighbors))
         return neighbors
@@ -241,12 +248,12 @@ class QuiltBoard(BaseModel):
         Returns:
             List of colors from adjacent edge tiles (may be empty if no edge tiles are adjacent)
         """
-        neighbors = self._get_hex_neighbors(pos)
+        neighbors = pos.get_neighbors()
         edge_colors = []
 
         for neighbor_pos in neighbors:
             # Check if this neighbor is an edge position
-            if self._is_edge_position(neighbor_pos):
+            if neighbor_pos.is_edge_position():
                 # Get the tile at this edge position
                 edge_tile: PatchTile | None = self.tiles_by_pos.get(neighbor_pos)
                 if edge_tile:
@@ -266,41 +273,41 @@ class QuiltBoard(BaseModel):
         for q in range(7):
             for r in range(7):
                 pos = HexPosition(q=q, r=r)
-                if not self._is_edge_position(pos) and not self._is_design_goal_position(pos):
+                if not pos.is_edge_position() and not pos.is_design_goal_position():
                     valid_positions.append(pos)
 
         # Find all edge tiles
-        edge_tiles = []
+        edge_tiles: list[HexPosition] = []
         for q in range(7):
             for r in range(7):
                 pos = HexPosition(q=q, r=r)
-                if self._is_edge_position(pos):
+                if pos.is_edge_position():
                     edge_tiles.append(pos)
 
         # Find all tiles that are neighbors of edge tiles
         tiles_near_edge = set()
         for edge_tile in edge_tiles:
-            neighbors = self._get_hex_neighbors(edge_tile)
+            neighbors = edge_tile.get_neighbors()
             for neighbor in neighbors:
                 # Only include neighbors within board bounds and not edge tiles themselves
-                if not self._is_edge_position(neighbor):
+                if not neighbor.is_edge_position():
                     tiles_near_edge.add(neighbor)
 
         # Find pairs of neighboring tiles where at least one is near an edge
         two_tile_sets = []
 
         # Convert set to list for easier iteration
-        tiles_near_edge_list = list(tiles_near_edge)
+        tiles_near_edge_list: list[HexPosition] = list(tiles_near_edge)
 
         # Check all possible pairs
         for _i, pos1 in enumerate(tiles_near_edge_list):
-            neighbors1 = self._get_hex_neighbors(pos1)
+            neighbors1 = pos1.get_neighbors()
 
             for neighbor in neighbors1:
                 # Skip if neighbor is an edge tile
-                if self._is_edge_position(neighbor):
+                if neighbor.is_edge_position():
                     continue
-                if self._is_design_goal_position(neighbor):
+                if neighbor.is_design_goal_position():
                     continue
 
                 # Create the pair, ensuring consistent ordering

@@ -62,7 +62,7 @@ def build_model(
                 set_graph_edges.append((s_idx, t_idx))
                 continue
 
-            s_neighbors = [quilt_board._get_hex_neighbors(tile) for tile in _s]
+            s_neighbors = [neighbor for tile in _s for neighbor in tile.get_neighbors()]
             s_neighbors = [neighbor for neighbor in s_neighbors if neighbor in _t]
             s_neighbors = list(set(s_neighbors))
 
@@ -582,7 +582,7 @@ def main():
     ]
 
     # Define the three design goal tiles to permute
-    design_goal_tiles = [DesignGoalTiles.FOUR_TWO, DesignGoalTiles.SIX_UNIQUE, DesignGoalTiles.TWO_TRIPLETS]
+    design_goal_tiles = [DesignGoalTiles.FOUR_TWO, DesignGoalTiles.SIX_UNIQUE, DesignGoalTiles.THREE_PAIRS]
 
     # Generate all permutations of the design goal tiles (3! = 6 permutations)
     design_goal_permutations = list(itertools.permutations(design_goal_tiles))
