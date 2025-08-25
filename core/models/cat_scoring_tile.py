@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import itertools
+import json
 from enum import Enum
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
@@ -59,13 +61,19 @@ class CatScoringTile(BaseModel):
     )
 
     def get_leo_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_straight_line_patches(quilt_board, 5)
+        patches = self._get_straight_line_patches(quilt_board, 5)
+        self.save_patches(patches)
+        return patches
 
     def get_rumi_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_straight_line_patches(quilt_board, 3)
+        patches = self._get_straight_line_patches(quilt_board, 3)
+        self.save_patches(patches)
+        return patches
 
     def get_tecolote_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_straight_line_patches(quilt_board, 4)
+        patches = self._get_straight_line_patches(quilt_board, 4)
+        self.save_patches(patches)
+        return patches
 
     def _get_straight_line_patches(
         self, quilt_board: QuiltBoard | None = None, length: int = 5
@@ -140,7 +148,9 @@ class CatScoringTile(BaseModel):
         return valid_combinations
 
     def get_callie_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self.get_callie_patches(quilt_board, all_neighbors=True)
+        patches = self._get_callie_patches(quilt_board, all_neighbors=True)
+        self.save_patches(patches)
+        return patches
 
     # def get_millie_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
     #     return self.get_callie_patches(quilt_board, all_neighbors=False)
@@ -258,6 +268,15 @@ class CatScoringTile(BaseModel):
         """
         valid_combinations = []
 
+        almond_rorations = [
+            [0, 1, 2, 3, 4],
+            [1, 3, 0, 2, 4],
+            [2, 4, 0, 1, 3],
+            [4, 3, 2, 1, 0],
+            [3, 1, 4, 2, 0],
+            [2, 0, 4, 3, 1],
+        ]
+
         # Iterate through all positions on the 7x7 board
         for q, r in itertools.product(range(7), range(7)):
             start_pos = HexPosition(q=q, r=r)
@@ -268,48 +287,85 @@ class CatScoringTile(BaseModel):
 
             candidates = self._build_set(start_pos, quilt_board, 5)
             for candidate in candidates:
-                if not candidate[0].is_neighbor(candidate[1]):
-                    continue
-                if not candidate[0].is_neighbor(candidate[2]):
-                    continue
-                if not candidate[0].is_neighbor(candidate[3]):
-                    continue
-                if candidate[0].is_neighbor(candidate[4]):
-                    continue
-                if not candidate[1].is_neighbor(candidate[3]):
-                    continue
-                if not candidate[1].is_neighbor(candidate[4]):
-                    continue
-                if candidate[1].is_neighbor(candidate[2]):
-                    continue
-                if not candidate[2].is_neighbor(candidate[3]):
-                    continue
-                if candidate[2].is_neighbor(candidate[4]):
-                    continue
-                if not candidate[3].is_neighbor(candidate[4]):
-                    continue
-                sorted_line = sorted(candidate, key=lambda p: p.abs)
+                for rotation in almond_rorations:
+                    rotated_candidate = [candidate[i] for i in rotation]
+                    if not rotated_candidate[0].is_neighbor(rotated_candidate[1]):
+                        continue
+                    if not rotated_candidate[0].is_neighbor(rotated_candidate[2]):
+                        continue
+                    if not rotated_candidate[0].is_neighbor(rotated_candidate[3]):
+                        continue
+                    if rotated_candidate[0].is_neighbor(rotated_candidate[4]):
+                        continue
+                    if not rotated_candidate[1].is_neighbor(rotated_candidate[3]):
+                        continue
+                    if not rotated_candidate[1].is_neighbor(rotated_candidate[4]):
+                        continue
+                    if rotated_candidate[1].is_neighbor(rotated_candidate[2]):
+                        continue
+                    if not rotated_candidate[2].is_neighbor(rotated_candidate[3]):
+                        continue
+                    if rotated_candidate[2].is_neighbor(rotated_candidate[4]):
+                        continue
+                    if not rotated_candidate[3].is_neighbor(rotated_candidate[4]):
+                        continue
+                    sorted_line = sorted(rotated_candidate, key=lambda p: p.abs)
 
-                # Avoid duplicates (lines can be found from both ends)
-                if sorted_line not in valid_combinations:
-                    valid_combinations.append(sorted_line)
+                    # Avoid duplicates (lines can be found from both ends)
+                    if sorted_line not in valid_combinations:
+                        valid_combinations.append(sorted_line)
+                        break
 
+        self.save_patches(valid_combinations)
         return valid_combinations
 
     def get_millie_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_patches_by_length(quilt_board, 3)
+        patches = self._get_patches_by_length(quilt_board, 3)
+        self.save_patches(patches)
+        return patches
 
     def get_tibbit_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_patches_by_length(quilt_board, 4)
+        patches = self._get_patches_by_length(quilt_board, 4)
+        self.save_patches(patches)
+        return patches
 
-    def get_coconuts_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_patches_by_length(quilt_board, 5)
+    def get_coconut_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
+        patches = self._get_patches_by_length(quilt_board, 5)
+        self.save_patches(patches)
+        return patches
 
     def get_cira_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_patches_by_length(quilt_board, 6)
+        patches = self._get_patches_by_length(quilt_board, 6)
+        self.save_patches(patches)
+        return patches
 
     def get_gwenivere_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
-        return self._get_patches_by_length(quilt_board, 7)
+        patches = self._get_patches_by_length(quilt_board, 7)
+        self.save_patches(patches)
+        return patches
+
+    def get_patches(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
+        if self.name == "Callie":
+            return self.get_callie_patches(quilt_board)
+        if self.name == "Millie":
+            return self.get_millie_patches(quilt_board)
+        if self.name == "Tibbit":
+            return self.get_tibbit_patches(quilt_board)
+        if self.name == "Coconut":
+            return self.get_coconut_patches(quilt_board)
+        if self.name == "Cira":
+            return self.get_cira_patches(quilt_board)
+        if self.name == "Gwenivere":
+            return self.get_gwenivere_patches(quilt_board)
+        if self.name == "Almond":
+            return self.get_almond_patches(quilt_board)
+        if self.name == "Leo":
+            return self.get_leo_patches(quilt_board)
+        if self.name == "Rumi":
+            return self.get_rumi_patches(quilt_board)
+        if self.name == "Tecolote":
+            return self.get_tecolote_patches(quilt_board)
+        raise ValueError(f"No get_patches method found for cat: {self.name}")
 
     def _get_patches_by_length(self, quilt_board: QuiltBoard | None = None, length: int = 3) -> list[list[HexPosition]]:
         """Get all possible sets of patch tiles in connected groups of specified length.
@@ -348,3 +404,77 @@ class CatScoringTile(BaseModel):
                     valid_combinations.append(sorted_line)
 
         return valid_combinations
+
+    def save_patches(self, patches: list[list[HexPosition]], data_dir: str = "data") -> None:
+        """Save the patches data for this cat to a JSON file.
+
+        Creates a data directory if it doesn't exist and saves the patches as a JSON file
+        named after the cat. Each patch is converted from HexPosition objects to abs values.
+
+        Args:
+            patches: List of lists of HexPosition objects to save
+            data_dir: Directory name to save the data files (default: "data")
+        """
+        # Create data directory if it doesn't exist
+        data_path = Path(data_dir)
+        data_path.mkdir(exist_ok=True)
+
+        # Convert HexPosition objects to abs values
+        abs_patches = [[pos.abs for pos in patch] for patch in patches]
+
+        # Sort patches by their abs values for consistent ordering
+        abs_patches.sort()
+
+        # Save to JSON file named after the cat
+        filename = f"{self.name.lower()}_patches.json"
+        filepath = data_path / filename
+
+        with open(filepath, "w") as f:
+            f.write("[\n")
+            for i, patch in enumerate(abs_patches):
+                if i > 0:
+                    f.write(",\n")
+                f.write(f"  {json.dumps(patch)}")
+            f.write("\n]")
+
+    def load_patches(self, data_dir: str = "data") -> list[list[int]]:
+        """Load the patches data for this cat from a JSON file.
+
+        Args:
+            data_dir: Directory name where the data files are stored (default: "data")
+
+        Returns:
+            List of lists containing abs values for each patch
+
+        Raises:
+            FileNotFoundError: If the JSON file for this cat doesn't exist
+        """
+        data_path = Path(data_dir)
+        filename = f"{self.name.lower()}_patches.json"
+        filepath = data_path / filename
+
+        if not filepath.exists():
+            raise FileNotFoundError(f"Patches data file not found: {filepath}")
+
+        with open(filepath) as f:
+            return json.load(f)
+
+    def _get_patches_for_cat(self, quilt_board: QuiltBoard | None = None) -> list[list[HexPosition]]:
+        """Get patches for this specific cat by calling the appropriate method.
+
+        Args:
+            quilt_board: Optional QuiltBoard instance to pass to the get_patches method
+
+        Returns:
+            List of valid tile combinations for this cat
+
+        Raises:
+            ValueError: If no matching get_patches method is found for this cat
+        """
+        cat_name_lower = self.name.lower()
+        method_name = f"get_{cat_name_lower}_patches"
+
+        if hasattr(self, method_name):
+            method = getattr(self, method_name)
+            return method(quilt_board)
+        raise ValueError(f"No get_patches method found for cat: {self.name}")

@@ -37,7 +37,7 @@ class HexPosition(BaseModel):
         return 0 <= self.q <= 6 and 0 <= self.r <= 6
 
     def is_neighbor(self, other: HexPosition) -> bool:
-        if self.q == other.q or self.r == other.r:
+        if (self.q == other.q and abs(self.r - other.r) == 1) or (self.r == other.r and abs(self.q - other.q) == 1):
             return True
         if self.r % 2 == 0 and self.r == other.r + 1 and self.q == other.q + 1:
             return True
