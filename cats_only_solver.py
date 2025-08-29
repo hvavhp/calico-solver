@@ -1,15 +1,19 @@
 import json
+from itertools import combinations
 
 from ortools.sat.python import cp_model
 
-from core.models.quilt_board import HexPosition
+from core.enums.design_goal import DesignGoalTiles
+from core.enums.edge_tile_settings import EdgeTileSettings
+from core.enums.pattern import Pattern
+from core.models.quilt_board import HexPosition, QuiltBoard
 
 
 def build_graph_and_solve():
     # Load subsets from JSON files
     with open("data/leo_patches.json") as f:
         leo_patches = json.load(f)
-    with open("data/cira_patches.json") as f:
+    with open("data/almond_patches.json") as f:
         almond_patches = json.load(f)
     with open("data/millie_patches.json") as f:
         millie_patches = json.load(f)
@@ -127,6 +131,64 @@ def solve(vertex_edges, subsets, weights):
                 for k in common:
                     triangles.append((i, j, k))
 
+    dummy_design_goals = [
+        DesignGoalTiles.SIX_UNIQUE.value,
+        DesignGoalTiles.THREE_PAIRS.value,
+        DesignGoalTiles.TWO_TRIPLETS.value,
+    ]
+    board = QuiltBoard(edge_setting=EdgeTileSettings.BOARD_1, design_goal_tiles=dummy_design_goals)
+    inner_pattern_restrictions: list[tuple[int, int, int]] = []
+    pattern_groups: dict[Pattern, list[list[int]]] = {}
+    for _, idxs in same_label_idxs.items():
+        groups: dict[Pattern, list[int]] = {}
+        for idx in idxs:
+            subset = subsets[idx]
+            for v in subset:
+                pos = HexPosition.from_abs(v)
+                if pos.is_edge_position():
+                    pattern = board.tiles_by_pos[pos].pattern
+                    groups.setdefault(pattern, []).append(idx)
+                    break
+        for pattern, indices in groups.items():
+            pattern_groups.setdefault(pattern, []).append(indices)
+
+        for pattern_combo in combinations(list(groups.keys()), 3):
+            group1_indices = groups[pattern_combo[0]]
+            group2_indices = groups[pattern_combo[1]]
+            group3_indices = groups[pattern_combo[2]]
+
+            # Find all triplets where one element comes from each group and they are disjoint
+            for i1 in group1_indices:
+                s_1 = set(subsets[i1])
+                for i2 in group2_indices:
+                    s_2 = set(subsets[i2])
+                    if s_1 & s_2 != set():
+                        continue
+                    for i3 in group3_indices:
+                        s_3 = set(subsets[i3])
+                        if s_1 & s_3 != set():
+                            continue
+                        if s_2 & s_3 != set():
+                            continue
+                        sorted_indices = sorted([i1, i2, i3])
+                        if sorted_indices in inner_pattern_restrictions:
+                            continue
+                        inner_pattern_restrictions.append((i1, i2, i3))
+
+    outer_pattern_restrictions: list[tuple[int, int]] = []
+    for _, indices_list in pattern_groups.items():
+        for combo in combinations(indices_list, 2):
+            for i in combo[0]:
+                s_1 = set(subsets[i])
+                for j in combo[1]:
+                    s_2 = set(subsets[j])
+                    if s_1 & s_2 != set():
+                        continue
+                    sorted_indices = sorted([i, j])
+                    if sorted_indices in outer_pattern_restrictions:
+                        continue
+                    outer_pattern_restrictions.append(sorted_indices)
+
     # Build CP-SAT
     mdl = cp_model.CpModel()
     y = [mdl.NewBoolVar(f"y[{i}]") for i in range(m)]
@@ -141,17 +203,25 @@ def solve(vertex_edges, subsets, weights):
     for i, j, k in triangles:
         mdl.Add(y[i] + y[j] + y[k] <= 2)
 
+    # make sure that each cat occupy only 2 patterns
+    for i, j, k in inner_pattern_restrictions:
+        mdl.Add(y[i] + y[j] + y[k] <= 2)
+
+    # make sure that no two cats occupy the same pattern
+    for i, j in outer_pattern_restrictions:
+        mdl.Add(y[i] + y[j] <= 1)
+
     solver = cp_model.CpSolver()
     solver.parameters.num_search_workers = 8  # adjust to your CPU
     solver.parameters.max_time_in_seconds = 120.0  # optional time cap
     res = solver.Solve(mdl)
 
     chosen = [i for i in range(m) if solver.Value(y[i]) == 1]
-    return res, chosen, solver.ObjectiveValue()
+    return res, chosen, solver.ObjectiveValue(), subsets, weights
 
 
 if __name__ == "__main__":
-    result, chosen_subsets, objective_value = build_graph_and_solve()
+    result, chosen_subsets, objective_value, subsets, weights = build_graph_and_solve()
 
     print(f"\nSolution status: {result}")
     print(f"Objective value: {objective_value}")
@@ -160,6 +230,6 @@ if __name__ == "__main__":
     if chosen_subsets:
         print("\nChosen subset indices:")
         for idx in chosen_subsets[:10]:  # Show first 10
-            print(f"  Index {idx}")
+            print(f"  Index {idx}: {subsets[idx]} (weight {weights[idx]})")
         if len(chosen_subsets) > 10:
             print(f"  ... and {len(chosen_subsets) - 10} more")
