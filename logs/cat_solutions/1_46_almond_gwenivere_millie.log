@@ -1,0 +1,16 @@
+
+=== SOLUTION SUMMARY ===
+Cats: almond, gwenivere, millie
+Board: 1
+Solution status: 4
+Raw objective value: 600000046.0
+Actual score: 46
+Number of chosen patches: 6
+
+Chosen patch details:
+  Index 1: [4, 10, 11, 18, 19] (weight 9) - Edge patterns: QUATREFOIL
+  Index 3: [7, 8, 9, 15, 16] (weight 9) - Edge patterns: FLOWERS
+  Index 2351: [12, 20, 26, 32, 33, 38, 46] (weight 11) - Edge patterns: VINES
+  Index 3324: [21, 22, 23, 24, 31, 37, 45] (weight 11) - Edge patterns: FERNS
+  Index 4330: [29, 35, 36] (weight 3) - Edge patterns: DOTS
+  Index 4382: [39, 40, 48] (weight 3) - Edge patterns: STRIPES

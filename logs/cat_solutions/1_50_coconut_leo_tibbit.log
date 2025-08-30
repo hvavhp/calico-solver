@@ -1,0 +1,16 @@
+
+=== SOLUTION SUMMARY ===
+Cats: coconut, leo, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000050.0
+Actual score: 50
+Number of chosen patches: 6
+
+Chosen patch details:
+  Index 674: [26, 32, 33, 34, 40] (weight 7) - Edge patterns: QUATREFOIL
+  Index 832: [1, 8, 16, 23, 31] (weight 11) - Edge patterns: STRIPES
+  Index 839: [9, 10, 11, 12, 13] (weight 11) - Edge patterns: DOTS
+  Index 845: [35, 36, 37, 38, 39] (weight 11) - Edge patterns: DOTS
+  Index 1013: [15, 21, 22, 29] (weight 5) - Edge patterns: FERNS
+  Index 1034: [18, 19, 20, 24] (weight 5) - Edge patterns: VINES

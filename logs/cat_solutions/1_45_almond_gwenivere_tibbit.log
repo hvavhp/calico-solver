@@ -1,0 +1,15 @@
+
+=== SOLUTION SUMMARY ===
+Cats: almond, gwenivere, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000045.0
+Actual score: 45
+Number of chosen patches: 5
+
+Chosen patch details:
+  Index 12: [15, 16, 21, 22, 29] (weight 9) - Edge patterns: FERNS
+  Index 24: [32, 33, 39, 40, 47] (weight 9) - Edge patterns: DOTS
+  Index 652: [5, 7, 8, 9, 10, 11, 18] (weight 11) - Edge patterns: FLOWERS
+  Index 3676: [23, 24, 31, 36, 37, 38, 44] (weight 11) - Edge patterns: FLOWERS
+  Index 4272: [6, 12, 19, 26] (weight 5) - Edge patterns: STRIPES

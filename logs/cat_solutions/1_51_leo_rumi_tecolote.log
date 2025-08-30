@@ -1,0 +1,17 @@
+
+=== SOLUTION SUMMARY ===
+Cats: leo, rumi, tecolote
+Board: 1
+Solution status: 4
+Raw objective value: 600000051.0
+Actual score: 51
+Number of chosen patches: 7
+
+Chosen patch details:
+  Index 7: [9, 10, 11, 12, 13] (weight 11) - Edge patterns: DOTS
+  Index 12: [20, 26, 33, 39, 46] (weight 11) - Edge patterns: VINES
+  Index 24: [7, 15, 22] (weight 5) - Edge patterns: FLOWERS
+  Index 42: [21, 29, 36] (weight 5) - Edge patterns: FERNS
+  Index 54: [32, 38, 45] (weight 5) - Edge patterns: FERNS
+  Index 63: [1, 8, 16, 23] (weight 7) - Edge patterns: STRIPES
+  Index 77: [18, 24, 31, 37] (weight 7)

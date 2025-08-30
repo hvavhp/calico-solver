@@ -1,0 +1,16 @@
+
+=== SOLUTION SUMMARY ===
+Cats: cira, leo, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000050.0
+Actual score: 50
+Number of chosen patches: 6
+
+Chosen patch details:
+  Index 920: [14, 15, 22, 29, 36, 43] (weight 9) - Edge patterns: QUATREFOIL
+  Index 1879: [37, 38, 39, 40, 41, 44] (weight 9) - Edge patterns: FLOWERS
+  Index 1880: [1, 8, 16, 23, 31] (weight 11) - Edge patterns: STRIPES
+  Index 1887: [9, 10, 11, 12, 13] (weight 11) - Edge patterns: DOTS
+  Index 2082: [18, 19, 20, 24] (weight 5) - Edge patterns: VINES
+  Index 2165: [26, 27, 32, 33] (weight 5) - Edge patterns: FERNS

@@ -1,0 +1,17 @@
+
+=== SOLUTION SUMMARY ===
+Cats: leo, millie, tecolote
+Board: 1
+Solution status: 4
+Raw objective value: 600000045.0
+Actual score: 45
+Number of chosen patches: 7
+
+Chosen patch details:
+  Index 11: [18, 24, 31, 37, 44] (weight 11) - Edge patterns: FLOWERS
+  Index 12: [20, 26, 33, 39, 46] (weight 11) - Edge patterns: VINES
+  Index 85: [15, 21, 22] (weight 3) - Edge patterns: FERNS
+  Index 134: [29, 36, 43] (weight 3) - Edge patterns: QUATREFOIL
+  Index 153: [32, 38, 45] (weight 3) - Edge patterns: FERNS
+  Index 185: [1, 8, 16, 23] (weight 7) - Edge patterns: STRIPES
+  Index 194: [10, 11, 12, 13] (weight 7) - Edge patterns: DOTS

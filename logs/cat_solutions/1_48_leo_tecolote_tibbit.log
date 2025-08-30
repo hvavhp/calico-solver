@@ -1,0 +1,16 @@
+
+=== SOLUTION SUMMARY ===
+Cats: leo, tecolote, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000048.0
+Actual score: 48
+Number of chosen patches: 6
+
+Chosen patch details:
+  Index 0: [1, 8, 16, 23, 31] (weight 11) - Edge patterns: STRIPES
+  Index 7: [9, 10, 11, 12, 13] (weight 11) - Edge patterns: DOTS
+  Index 14: [36, 37, 38, 39, 40] (weight 11)
+  Index 198: [14, 15, 22, 29] (weight 5) - Edge patterns: QUATREFOIL
+  Index 234: [18, 19, 26, 27] (weight 5) - Edge patterns: FERNS
+  Index 301: [24, 32, 33, 34] (weight 5) - Edge patterns: QUATREFOIL

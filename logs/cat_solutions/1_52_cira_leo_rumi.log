@@ -1,0 +1,16 @@
+
+=== SOLUTION SUMMARY ===
+Cats: cira, leo, rumi
+Board: 1
+Solution status: 4
+Raw objective value: 600000052.0
+Actual score: 52
+Number of chosen patches: 6
+
+Chosen patch details:
+  Index 1548: [24, 26, 32, 33, 34, 40] (weight 9) - Edge patterns: QUATREFOIL
+  Index 1880: [1, 8, 16, 23, 31] (weight 11) - Edge patterns: STRIPES
+  Index 1887: [9, 10, 11, 12, 13] (weight 11) - Edge patterns: DOTS
+  Index 1893: [35, 36, 37, 38, 39] (weight 11) - Edge patterns: DOTS
+  Index 1904: [7, 15, 22] (weight 5) - Edge patterns: FLOWERS
+  Index 1917: [18, 19, 20] (weight 5) - Edge patterns: VINES

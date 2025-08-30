@@ -1,0 +1,15 @@
+
+=== SOLUTION SUMMARY ===
+Cats: coconut, gwenivere, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000045.0
+Actual score: 45
+Number of chosen patches: 5
+
+Chosen patch details:
+  Index 436: [18, 19, 20, 23, 24] (weight 7) - Edge patterns: VINES
+  Index 1456: [5, 7, 8, 9, 10, 11, 12] (weight 11) - Edge patterns: FLOWERS
+  Index 3175: [14, 15, 16, 22, 29, 36, 43] (weight 11) - Edge patterns: QUATREFOIL
+  Index 4971: [31, 37, 38, 39, 40, 41, 44] (weight 11) - Edge patterns: FLOWERS
+  Index 5290: [26, 27, 32, 33] (weight 5) - Edge patterns: FERNS

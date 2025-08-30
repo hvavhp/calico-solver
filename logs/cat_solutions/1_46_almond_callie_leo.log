@@ -1,0 +1,16 @@
+
+=== SOLUTION SUMMARY ===
+Cats: almond, callie, leo
+Board: 1
+Solution status: 4
+Raw objective value: 600000046.0
+Actual score: 46
+Number of chosen patches: 6
+
+Chosen patch details:
+  Index 8: [10, 11, 12, 18, 19] (weight 9)
+  Index 13: [23, 24, 31, 32, 38] (weight 9)
+  Index 29: [7, 8, 15] (weight 3) - Edge patterns: FLOWERS
+  Index 51: [36, 37, 44] (weight 3) - Edge patterns: FLOWERS
+  Index 56: [3, 9, 16, 22, 29] (weight 11) - Edge patterns: FERNS
+  Index 67: [20, 26, 33, 39, 46] (weight 11) - Edge patterns: VINES

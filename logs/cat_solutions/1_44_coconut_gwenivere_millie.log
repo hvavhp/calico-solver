@@ -1,0 +1,14 @@
+
+=== SOLUTION SUMMARY ===
+Cats: coconut, gwenivere, millie
+Board: 1
+Solution status: 4
+Raw objective value: 600000044.0
+Actual score: 44
+Number of chosen patches: 4
+
+Chosen patch details:
+  Index 1459: [5, 7, 8, 9, 10, 11, 18] (weight 11) - Edge patterns: FLOWERS
+  Index 1631: [6, 12, 19, 26, 33, 40, 48] (weight 11) - Edge patterns: STRIPES
+  Index 3260: [15, 16, 22, 23, 28, 29, 31] (weight 11) - Edge patterns: STRIPES
+  Index 4728: [24, 32, 36, 37, 38, 39, 44] (weight 11) - Edge patterns: FLOWERS

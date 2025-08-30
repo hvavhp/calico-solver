@@ -1,0 +1,15 @@
+
+=== SOLUTION SUMMARY ===
+Cats: gwenivere, tecolote, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000047.0
+Actual score: 47
+Number of chosen patches: 5
+
+Chosen patch details:
+  Index 5: [1, 8, 9, 10, 11, 16, 18] (weight 11) - Edge patterns: STRIPES
+  Index 799: [6, 12, 19, 26, 33, 40, 48] (weight 11) - Edge patterns: STRIPES
+  Index 2531: [15, 21, 22, 29, 36, 37, 45] (weight 11) - Edge patterns: FERNS
+  Index 4206: [23, 31, 38, 46] (weight 7) - Edge patterns: VINES
+  Index 4208: [24, 32, 39, 47] (weight 7) - Edge patterns: DOTS

@@ -1,0 +1,16 @@
+
+=== SOLUTION SUMMARY ===
+Cats: almond, leo, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000048.0
+Actual score: 48
+Number of chosen patches: 6
+
+Chosen patch details:
+  Index 25: [1, 8, 16, 23, 31] (weight 11) - Edge patterns: STRIPES
+  Index 32: [9, 10, 11, 12, 13] (weight 11) - Edge patterns: DOTS
+  Index 38: [35, 36, 37, 38, 39] (weight 11) - Edge patterns: DOTS
+  Index 197: [14, 15, 22, 29] (weight 5) - Edge patterns: QUATREFOIL
+  Index 232: [18, 19, 24, 32] (weight 5)
+  Index 323: [26, 33, 40, 41] (weight 5) - Edge patterns: FLOWERS

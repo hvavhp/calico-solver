@@ -1,0 +1,15 @@
+
+=== SOLUTION SUMMARY ===
+Cats: cira, gwenivere, tibbit
+Board: 1
+Solution status: 4
+Raw objective value: 600000045.0
+Actual score: 45
+Number of chosen patches: 5
+
+Chosen patch details:
+  Index 920: [14, 15, 22, 29, 36, 43] (weight 9) - Edge patterns: QUATREFOIL
+  Index 1305: [20, 26, 33, 39, 40, 46] (weight 9) - Edge patterns: VINES
+  Index 2324: [3, 10, 18, 24, 32, 38, 45] (weight 11) - Edge patterns: FERNS
+  Index 3030: [8, 9, 16, 23, 31, 37, 44] (weight 11) - Edge patterns: FLOWERS
+  Index 6196: [11, 12, 13, 19] (weight 5) - Edge patterns: DOTS
