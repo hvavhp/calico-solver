@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from core.enums.design_goal import DesignGoalTiles
 from core.enums.edge_tile_settings import EdgeTileSettings
+from core.enums.pattern import PATTERN_MAP
 from core.models.design_goal_tile import DesignGoalTile
 from core.models.quilt_board import QuiltBoard
 
@@ -223,7 +224,7 @@ def solve_combined(
 
 def build_model(
     model: cp_model.CpModel | None = None,
-    v: list[int] = None,
+    v: list[int] | None = None,
     edge_setting: EdgeTileSettings = EdgeTileSettings.BOARD_1,
     m1: DesignGoalTile = DesignGoalTiles.THREE_PAIRS.value,
     m2: DesignGoalTile = DesignGoalTiles.THREE_TWO_ONE.value,
@@ -241,7 +242,7 @@ def build_model(
     Returns all feasible solutions.
     """
     if v is None:
-        v = [1, 2, 3, 4, 5, 6]
+        v = list(PATTERN_MAP.values())
     assert len(v) == 6
     k = 6
 

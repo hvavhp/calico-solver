@@ -25,3 +25,5 @@ ALL_PATTERNS: tuple[Pattern, ...] = (
     Pattern.QUATREFOIL,
     Pattern.FERNS,
 )
+
+PATTERN_MAP: dict[Pattern, int] = {pattern: i for i, pattern in enumerate(ALL_PATTERNS)}

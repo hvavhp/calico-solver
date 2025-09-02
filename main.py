@@ -12,6 +12,7 @@ from core.enums.design_goal import DesignGoalTiles
 from core.enums.edge_tile_settings import EdgeTileSettings
 from core.models.quilt_board import QuiltBoard
 from solvers.buttons_solver import main as buttons_solver_main
+from solvers.cats_modeler import main as cats_modeler_main
 from solvers.new_button_solver import main as new_button_solver_main
 
 
@@ -54,6 +55,14 @@ def print_solver_menu():
     print("7. Quilt Board Pretty Print Demo")
     print("   - Demonstrates hexagonal board visualization")
     print("   - Shows edge tiles, design goals, and layout")
+    print()
+    print("8. Buttons Solver")
+    print("   - Buttons solver")
+    print("   - Maximizes buttons")
+    print()
+    print("9. Cats Modeler")
+    print("   - Cat-based patch selection and optimization")
+    print("   - Combines design goals with cat patch scoring")
     print()
     print("0. Exit")
     print("─" * 30)
@@ -448,7 +457,7 @@ def run_quilt_board_demo() -> bool:
 def get_user_choice() -> int | None:
     """Get user's solver choice."""
     try:
-        choice = input("Enter your choice (0-7): ").strip()
+        choice = input("Enter your choice (1-9): ").strip()
         return int(choice) if choice.isdigit() else None
     except (ValueError, KeyboardInterrupt):
         return None
@@ -459,7 +468,7 @@ def main():
     # Handle command line arguments
     parser = argparse.ArgumentParser(description="Calico Solver Runner")
     parser.add_argument(
-        "--solver", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8], help="Run specific solver directly (1-7)"
+        "--solver", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], help="Run specific solver directly (1-7)"
     )
     args = parser.parse_args()
 
@@ -477,6 +486,7 @@ def main():
             6: new_button_solver_main,
             7: run_quilt_board_demo,
             8: buttons_solver_main,
+            9: cats_modeler_main,
         }
         solvers[args.solver]()
 
@@ -504,8 +514,10 @@ def main():
             run_quilt_board_demo()
         elif choice == 8:
             buttons_solver_main()
+        elif choice == 9:
+            cats_modeler_main()
         else:
-            print("❌ Invalid choice. Please enter a number from 0-7.")
+            print("❌ Invalid choice. Please enter a number from 0-8.")
 
         if choice != 0:
             print("\n" + "=" * 60)

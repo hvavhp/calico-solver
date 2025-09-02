@@ -12,6 +12,7 @@ sqlglot
 # Utilities and Helpers
 blinker
 pydantic
+pydantic-core
 pydantic_settings
 snowflake-id
 typer
@@ -21,3 +22,8 @@ ortools
 numpy
 pandas
 protobuf
+
+# PDF Processing
+pikepdf
+Pillow
+PyPDF2
