@@ -13,6 +13,7 @@ from core.enums.edge_tile_settings import EdgeTileSettings
 from core.models.quilt_board import QuiltBoard
 from solvers.buttons_solver import main as buttons_solver_main
 from solvers.cats_modeler import main as cats_modeler_main
+from solvers.combined_solver import main as combined_solver_main
 from solvers.new_button_solver import main as new_button_solver_main
 
 
@@ -468,7 +469,7 @@ def main():
     # Handle command line arguments
     parser = argparse.ArgumentParser(description="Calico Solver Runner")
     parser.add_argument(
-        "--solver", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], help="Run specific solver directly (1-7)"
+        "--solver", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], help="Run specific solver directly (1-7)"
     )
     args = parser.parse_args()
 
@@ -487,6 +488,7 @@ def main():
             7: run_quilt_board_demo,
             8: buttons_solver_main,
             9: cats_modeler_main,
+            10: combined_solver_main,
         }
         solvers[args.solver]()
 
@@ -516,6 +518,8 @@ def main():
             buttons_solver_main()
         elif choice == 9:
             cats_modeler_main()
+        elif choice == 10:
+            combined_solver_main()
         else:
             print("❌ Invalid choice. Please enter a number from 0-8.")
 

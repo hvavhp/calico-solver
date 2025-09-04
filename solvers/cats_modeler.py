@@ -135,9 +135,35 @@ def add_virtual_vertices(vertex_edges, subsets, weights):
         vertex_edges.append((i, virtual_idx))
 
 
-def build_model(design_goals_model: DesignGoalsModel, cat_names: list[str]):
+class CatsModelComponents:
+    """Container for cats modeling components that will be used in combined solver."""
+
+    def __init__(
+        self,
+        y_variables,
+        subsets,
+        weights,
+        cat_for_weight,
+        masks,
+        forbidden_triangles,
+        outer_pattern_restrictions,
+        pattern_groups,
+        same_label_idxs,
+    ):
+        self.y_variables = y_variables
+        self.subsets = subsets
+        self.weights = weights
+        self.cat_for_weight = cat_for_weight
+        self.masks = masks
+        self.forbidden_triangles = forbidden_triangles
+        self.outer_pattern_restrictions = outer_pattern_restrictions
+        self.pattern_groups = pattern_groups
+        self.same_label_idxs = same_label_idxs
+
+
+def add_cats_constraints(design_goals_model: DesignGoalsModel, cat_names: list[str]) -> CatsModelComponents:
     """
-    Build model with variables and constraints for given cats.
+    Add cats constraints to an existing design goals model.
     Always uses board 1.
 
     Args:
@@ -145,7 +171,7 @@ def build_model(design_goals_model: DesignGoalsModel, cat_names: list[str]):
         cat_names: List of 3 cat names to use
 
     Returns:
-        tuple: (model, variables, subsets, weights, cat_for_weight)
+        CatsModelComponents: Container with all cats-related variables and data
     """
     # Load patches for the specified cats
     subsets, weights, cat_for_weight = load_cat_patches(cat_names)
@@ -367,7 +393,7 @@ def build_model(design_goals_model: DesignGoalsModel, cat_names: list[str]):
                     outer_pattern_restrictions.append(sorted_indices)
 
     # Create variables
-    y = [model.NewBoolVar(f"y[{i}]") for i in range(m)]
+    y = [model.NewBoolVar(f"cats_y[{i}]") for i in range(m)]
 
     # Add constraints
 
@@ -419,7 +445,7 @@ def build_model(design_goals_model: DesignGoalsModel, cat_names: list[str]):
         groups = pattern_groups[w]
         active = []
         for pattern, idxs in groups.items():
-            b = model.NewBoolVar(f"b[{w}][{pattern.value}]")
+            b = model.NewBoolVar(f"cats_b[{w}][{pattern.value}]")
             model.AddMaxEquality(b, [y[idx] for idx in idxs])
             active.append(b)
         model.Add(sum(active) <= 2)
@@ -428,56 +454,40 @@ def build_model(design_goals_model: DesignGoalsModel, cat_names: list[str]):
     for i, j in outer_pattern_restrictions:
         model.Add(y[i] + y[j] <= 1)
 
-    # # Add pattern difference constraints for neighboring subsets
-    # # For each neighboring pair (i, j), create boolean variable indicating if they have different patterns
-    # pattern_diff_vars = {}
+    return CatsModelComponents(
+        y_variables=y,
+        subsets=subsets,
+        weights=weights,
+        cat_for_weight=cat_for_weight,
+        masks=masks,
+        forbidden_triangles=forbidden_triangles,
+        outer_pattern_restrictions=outer_pattern_restrictions,
+        pattern_groups=pattern_groups,
+        same_label_idxs=same_label_idxs,
+    )
 
-    # for i in range(m):
-    #     if weights[i] == 100000000:  # Skip virtual vertices
-    #         continue
-    #     for j in adj[i]:
-    #         if j <= i or weights[j] == 100000000:  # Avoid duplicates and skip virtual vertices
-    #             continue
 
-    #         # Create boolean variable: 1 if patterns are different, 0 if same
-    #         diff_var = model.NewBoolVar(f"pattern_diff_{i}_{j}")
-    #         pattern_diff_vars[(i, j)] = diff_var
+def build_model(design_goals_model: DesignGoalsModel, cat_names: list[str]):
+    """
+    Build model with variables and constraints for given cats.
+    Always uses board 1.
 
-    #         # Get pattern representatives for both subsets
-    #         subset_i = subsets[i]
-    #         subset_j = subsets[j]
+    Args:
+        design_goals_model: DesignGoalsModel instance with CP-SAT model and pattern variables
+        cat_names: List of 3 cat names to use
 
-    #         # Find representative tiles (first tiles) that have pattern variables
-    #         rep_tile_i = None
-    #         rep_tile_j = None
+    Returns:
+        tuple: (model, variables, subsets, weights, cat_for_weight)
+    """
+    cats_components = add_cats_constraints(design_goals_model, cat_names)
 
-    #         for tile in subset_i:
-    #             if tile < 49 and f"P_{tile}" in pattern_variables:
-    #                 rep_tile_i = tile
-    #                 break
-
-    #         for tile in subset_j:
-    #             if tile < 49 and f"P_{tile}" in pattern_variables:
-    #                 rep_tile_j = tile
-    #                 break
-
-    #         if rep_tile_i is not None and rep_tile_j is not None:
-    #             pattern_var_i = pattern_variables[f"P_{rep_tile_i}"]
-    #             pattern_var_j = pattern_variables[f"P_{rep_tile_j}"]
-
-    #             # diff_var = 1 if patterns are different, 0 if same
-    #             # This is equivalent to: diff_var = (pattern_var_i != pattern_var_j)
-
-    #             # diff_var = 1 iff pattern_var_i != pattern_var_j
-    #             model.Add(pattern_var_i != pattern_var_j).OnlyEnforceIf(diff_var)
-    #             # model.Add(pattern_var_i == pattern_var_j).OnlyEnforceIf(diff_var.Not())
-
-    # # Add the main constraint: y_i + y_j <= pattern_diff + 1
-    # # This means both can only be selected if they have different patterns
-    # for (i, j), diff_var in pattern_diff_vars.items():
-    #     model.Add(y[i] + y[j] <= diff_var + 1)
-
-    return model, y, subsets, weights, cat_for_weight
+    return (
+        design_goals_model.model,
+        cats_components.y_variables,
+        cats_components.subsets,
+        cats_components.weights,
+        cats_components.cat_for_weight,
+    )
 
 
 def solve_model(model, y, weights):

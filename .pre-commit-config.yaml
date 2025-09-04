@@ -1,21 +1,16 @@
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: local
     hooks:
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-        exclude: ^(migrations|tests)/
-      - id: requirements-txt-fixer
-      - id: check-merge-conflict
-
-  - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.8.3
-    hooks:
-      - id: commitizen
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.9
-    hooks:
-      - id: ruff
-        args: [--fix]
+      - id: ruff-check
+        name: Ruff Check
+        entry: ruff check --fix
+        language: system
+        files: \.py$
+        require_serial: false
+        
       - id: ruff-format
+        name: Ruff Format
+        entry: ruff format
+        language: system
+        files: \.py$
+        require_serial: false

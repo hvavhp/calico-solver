@@ -14,38 +14,45 @@ from solvers.restructured_design_goals_solver import DesignGoalsModel
 from solvers.restructured_design_goals_solver import build_model as design_goals_build_model
 
 
-def build_model(
-    base_model: DesignGoalsModel | None = None,
+class ButtonsModelComponents:
+    """Container for buttons modeling components that will be used in combined solver."""
+
+    def __init__(self, y_s, y_sk, r, a, mark, bonus, tile_sets, set_graph_edges):
+        self.y_s = y_s  # Button activation variables
+        self.y_sk = y_sk  # Button-color activation variables
+        self.r = r  # Representative variables
+        self.a = a  # Assignment variables
+        self.mark = mark  # Color marking variables
+        self.bonus = bonus  # Rainbow bonus variable
+        self.tile_sets = tile_sets  # The tile sets used for buttons
+        self.set_graph_edges = set_graph_edges  # Edges between tile sets
+
+
+def add_buttons_constraints(
+    design_goals_model: DesignGoalsModel,
     board_setting: EdgeTileSettings = EdgeTileSettings.BOARD_1,
-    m1: DesignGoalTile = DesignGoalTiles.FOUR_TWO.value,
-    m2: DesignGoalTile = DesignGoalTiles.SIX_UNIQUE.value,
-    m3: DesignGoalTile = DesignGoalTiles.TWO_TRIPLETS.value,
-) -> DesignGoalsModel:
+) -> ButtonsModelComponents:
     """
-    n: number of base vars x[0..n-1]
-    values: [v1,..,vK] (K can be 6 as in your case)
-    m: list of subset specs over indices of x; each item either:
-       - {"first":[...], "second":[...]}  OR
-       - {"subset":[...], "t": t} meaning first=subset[:t], second=subset[t:].
-    edges: list of undirected edges on subset indices, e.g. [(0,1),(1,2),...]
-    add_additional_constraints: optional callback(model, x, values) to add your original constraints on x.
+    Add buttons constraints to an existing design goals model.
+
+    Args:
+        design_goals_model: DesignGoalsModel instance with CP-SAT model and variables
+        board_setting: Board edge configuration to use
+
+    Returns:
+        ButtonsModelComponents: Container with all buttons-related variables and data
     """
+    # Use the same board configuration as the design goals model
     quilt_board = QuiltBoard(
         edge_setting=board_setting,
-        design_goal_tiles=[m1, m2, m3],
+        design_goal_tiles=design_goals_model.design_goal_tiles,
     )
 
-    model = base_model.model
-
-    # model = cp_model.CpModel()
+    model = design_goals_model.model
     colors = COLOR_MAP
 
-    # 1) Decision vars: x_i in allowed set
-    # x = [model.NewIntVarFromDomain(cp_model.Domain.FromValues(values), f"x[{i}]") for i in range(n)]
-    x = base_model.color_variables
-
-    # 2) Literals eq[(i,k)] <=> (x[i] == values[k])
-    eq = base_model.z_color_variables
+    # Use existing color variables and channeling variables
+    eq = design_goals_model.z_color_variables
 
     # get 3-tile sets and 2-tile sets near edge
     three_tile_sets = quilt_board.get_three_neighbor_tile_sets()
@@ -71,9 +78,8 @@ def build_model(
 
     # 4) Compute y_{S,k} and y_S
     y_sk = [[None for _ in range(len(colors))] for _ in range(s)]
-    y_s = [model.NewBoolVar(f"y_subset[{_s}]") for _s in range(s)]
+    y_s = [model.NewBoolVar(f"buttons_y_subset[{_s}]") for _s in range(s)]
 
-    r = {}
     for _s, subset in enumerate(tile_sets):
         # One literal per k saying subset s wins with value v_k
         sum_k = []
@@ -86,7 +92,7 @@ def build_model(
         for _color in colors:
             _k = colors[_color]
             conds = [eq[tile.abs][_k] for tile in subset]
-            y_sk[_s][_k] = model.NewBoolVar(f"y_subset[{_s}]_val{_k}")
+            y_sk[_s][_k] = model.NewBoolVar(f"buttons_y_subset[{_s}]_val{_k}")
 
             if _color not in _colors:
                 model.Add(y_sk[_s][_k] == 0)
@@ -104,10 +110,11 @@ def build_model(
 
     # 5) k-consistent component counting via representatives
     # r[R][k] == 1  <=> R is representative of a k-labeled component
-    r = [[model.NewBoolVar(f"r[{_r}][{_k}]") for _k in range(len(colors))] for _r in range(s)]
+    r = [[model.NewBoolVar(f"buttons_r[{_r}][{_k}]") for _k in range(len(colors))] for _r in range(s)]
     # a[S][R][k] == 1  <=> S belongs to representative R in label k
     a = [
-        [[model.NewBoolVar(f"a[{_s}][{_r}][{_k}]") for _k in range(len(colors))] for _r in range(s)] for _s in range(s)
+        [[model.NewBoolVar(f"buttons_a[{_s}][{_r}][{_k}]") for _k in range(len(colors))] for _r in range(s)]
+        for _s in range(s)
     ]
 
     # Every winning vertex (for k) picks exactly one representative (for k)
@@ -130,21 +137,45 @@ def build_model(
 
     # Model rainbow score
     # mark[_k] == 1  <=> color _k appears in at least one of the buttons
-    mark = [model.NewBoolVar(f"u[{_k}]") for _k in range(len(colors))]
+    mark = [model.NewBoolVar(f"buttons_mark[{_k}]") for _k in range(len(colors))]
     for _k in range(len(colors)):
         model.AddMaxEquality(mark[_k], [r[_r][_k] for _r in range(s)])
 
     # bonus == 1  <=> all colors appear in at least one of the buttons
-    bonus = model.NewBoolVar("bonus")
+    bonus = model.NewBoolVar("buttons_bonus")
     for _k in range(len(colors)):
         model.Add(bonus <= mark[_k])
 
     model.Add(bonus >= sum(mark) - (len(colors) - 1))
 
-    # Objective: total number of k-consistent activated components
-    model.Maximize(sum(r[_r][_k] for _r in range(s) for _k in range(len(colors))) + bonus)
+    return ButtonsModelComponents(
+        y_s=y_s, y_sk=y_sk, r=r, a=a, mark=mark, bonus=bonus, tile_sets=tile_sets, set_graph_edges=set_graph_edges
+    )
 
-    return model, x, y_s, y_sk, r, a, mark, bonus
+
+def build_model(
+    base_model: DesignGoalsModel | None = None,
+    board_setting: EdgeTileSettings = EdgeTileSettings.BOARD_1,
+    m1: DesignGoalTile = DesignGoalTiles.FOUR_TWO.value,
+    m2: DesignGoalTile = DesignGoalTiles.SIX_UNIQUE.value,
+    m3: DesignGoalTile = DesignGoalTiles.TWO_TRIPLETS.value,
+) -> tuple:
+    """
+    Legacy build_model function that creates a buttons-only model.
+    For combined functionality, use add_buttons_constraints instead.
+    """
+    buttons_components = add_buttons_constraints(base_model, board_setting)
+
+    return (
+        base_model.model,
+        base_model.color_variables,
+        buttons_components.y_s,
+        buttons_components.y_sk,
+        buttons_components.r,
+        buttons_components.a,
+        buttons_components.mark,
+        buttons_components.bonus,
+    )
 
 
 def solve_model(model, base_model: DesignGoalsModel, x, y_s, y_sk, r, a, mark, bonus, time_limit_sec=None, workers=8):

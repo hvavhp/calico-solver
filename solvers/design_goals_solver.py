@@ -3,6 +3,7 @@
 
 from ortools.sat.python import cp_model
 
+
 def solve_three_patterns(v, m1, m2, m3):
     """
     v  : list of 6 distinct integers (the allowed values), e.g. [3,7,11,20,25,42]
@@ -11,9 +12,9 @@ def solve_three_patterns(v, m1, m2, m3):
     m3 : multiplicities for (p_1..p_6),   sum=6
     Returns one feasible assignment (x, t, p) or None if infeasible.
     """
-    K = len(v)
+    no_values = len(v)
     n = 6
-    assert K == 6 and n == 6, "This helper expects K=n=6"
+    assert no_values == 6 and n == 6, "This helper expects K=n=6"
     assert sum(m1) == n and sum(m2) == n and sum(m3) == n
 
     model = cp_model.CpModel()
@@ -25,42 +26,42 @@ def solve_three_patterns(v, m1, m2, m3):
     p = [model.NewIntVarFromDomain(dom, f"p[{i}]") for i in range(n)]
 
     # Channeling booleans: bG[i][k] == 1  <=>  G[i] == v[k]
-    def make_b(G, name):
-        return [[model.NewBoolVar(f"{name}_is_v{v[k]}[{i}]") for k in range(K)] for i in range(n)]
+    def make_b(group, name):
+        return [[model.NewBoolVar(f"{name}_is_v{v[k]}[{i}]") for k in range(no_values)] for i in range(n)]
 
-    bX = make_b(x, "x")
-    bT = make_b(t, "t")
-    bP = make_b(p, "p")
+    b_x = make_b(x, "x")
+    b_t = make_b(t, "t")
+    b_p = make_b(p, "p")
 
     # For each group, exactly one value chosen per position, and channel equality
-    def attach_channel(G, bG):
+    def attach_channel(group, b_g):
         for i in range(n):
-            model.Add(sum(bG[i][k] for k in range(K)) == 1)
-            for k in range(K):
-                model.Add(G[i] == v[k]).OnlyEnforceIf(bG[i][k])
-                model.Add(G[i] != v[k]).OnlyEnforceIf(bG[i][k].Not())
+            model.Add(sum(b_g[i][k] for k in range(no_values)) == 1)
+            for k in range(no_values):
+                model.Add(group[i] == v[k]).OnlyEnforceIf(b_g[i][k])
+                model.Add(group[i] != v[k]).OnlyEnforceIf(b_g[i][k].Not())
 
-    attach_channel(x, bX)
-    attach_channel(t, bT)
-    attach_channel(p, bP)
+    attach_channel(x, b_x)
+    attach_channel(t, b_t)
+    attach_channel(p, b_p)
 
     # Pattern slot assignment: for group G with multiplicities m
     # wG[k][slot] = 1 if value v[k] is used for slot "slot" (size m[slot])
-    def add_pattern_constraints(bG, m, tag):
+    def add_pattern_constraints(b_g, m, tag):
         r = len(m)
-        w = [[model.NewBoolVar(f"w_{tag}[k={k},slot={s}]") for s in range(r)] for k in range(K)]
+        w = [[model.NewBoolVar(f"w_{tag}[k={k},slot={s}]") for s in range(r)] for k in range(no_values)]
 
         # each slot is taken by exactly one value
         for s in range(r):
-            model.Add(sum(w[k][s] for k in range(K)) == 1)
+            model.Add(sum(w[k][s] for k in range(no_values)) == 1)
 
         # each value serves at most one slot
-        for k in range(K):
+        for k in range(no_values):
             model.Add(sum(w[k][s] for s in range(r)) <= 1)
 
         # count-matching: occurrences of v[k] equals the size of the slot it takes (or 0)
-        for k in range(K):
-            occ_k = sum(bG[i][k] for i in range(n))
+        for k in range(no_values):
+            occ_k = sum(b_g[i][k] for i in range(n))
             model.Add(occ_k == sum(m[s] * w[k][s] for s in range(r)))
 
         # optional symmetry breaking for equal multiplicities (speedup; not required)
@@ -69,14 +70,15 @@ def solve_three_patterns(v, m1, m2, m3):
         for s, size in enumerate(m):
             eq.setdefault(size, []).append(s)
         for _, slots in eq.items():
-            for a, b in zip(slots, slots[1:]):
-                model.Add(sum((k+1) * w[k][a] for k in range(K))
-                          <= sum((k+1) * w[k][b] for k in range(K)))
+            for a, b in zip(slots, slots[1:], strict=False):
+                model.Add(
+                    sum((k + 1) * w[k][a] for k in range(no_values)) <= sum((k + 1) * w[k][b] for k in range(no_values))
+                )
         return w
 
-    wX = add_pattern_constraints(bX, m1, "X")
-    wT = add_pattern_constraints(bT, m2, "T")
-    wP = add_pattern_constraints(bP, m3, "P")
+    add_pattern_constraints(b_x, m1, "X")
+    add_pattern_constraints(b_t, m2, "T")
+    add_pattern_constraints(b_p, m3, "P")
 
     # Cross-group links (1-based indices in your spec → 0-based here)
     model.Add(x[2] == t[0])  # x3 = t1
@@ -135,9 +137,9 @@ def solve_three_patterns_all(v, m1, m2, m3, max_solutions: int | None = None):
     Warning: The number of solutions can be very large. Use `max_solutions`
     to cap the enumeration if needed.
     """
-    K = len(v)
+    no_values = len(v)
     n = 6
-    assert K == 6 and n == 6, "This helper expects K=n=6"
+    assert no_values == 6 and n == 6, "This helper expects K=n=6"
     assert sum(m1) == n and sum(m2) == n and sum(m3) == n
 
     model = cp_model.CpModel()
@@ -147,46 +149,47 @@ def solve_three_patterns_all(v, m1, m2, m3, max_solutions: int | None = None):
     t = [model.NewIntVarFromDomain(dom, f"t[{i}]") for i in range(n)]
     p = [model.NewIntVarFromDomain(dom, f"p[{i}]") for i in range(n)]
 
-    def make_b(G, name):
-        return [[model.NewBoolVar(f"{name}_is_v{v[k]}[{i}]") for k in range(K)] for i in range(n)]
+    def make_b(group, name):
+        return [[model.NewBoolVar(f"{name}_is_v{v[k]}[{i}]") for k in range(no_values)] for i in range(n)]
 
-    bX = make_b(x, "x")
-    bT = make_b(t, "t")
-    bP = make_b(p, "p")
+    b_x = make_b(x, "x")
+    b_t = make_b(t, "t")
+    b_p = make_b(p, "p")
 
-    def attach_channel(G, bG):
+    def attach_channel(group, b_g):
         for i in range(n):
-            model.Add(sum(bG[i][k] for k in range(K)) == 1)
-            for k in range(K):
-                model.Add(G[i] == v[k]).OnlyEnforceIf(bG[i][k])
-                model.Add(G[i] != v[k]).OnlyEnforceIf(bG[i][k].Not())
+            model.Add(sum(b_g[i][k] for k in range(no_values)) == 1)
+            for k in range(no_values):
+                model.Add(group[i] == v[k]).OnlyEnforceIf(b_g[i][k])
+                model.Add(group[i] != v[k]).OnlyEnforceIf(b_g[i][k].Not())
 
-    attach_channel(x, bX)
-    attach_channel(t, bT)
-    attach_channel(p, bP)
+    attach_channel(x, b_x)
+    attach_channel(t, b_t)
+    attach_channel(p, b_p)
 
-    def add_pattern_constraints(bG, m, tag):
+    def add_pattern_constraints(b_g, m, tag):
         r = len(m)
-        w = [[model.NewBoolVar(f"w_{tag}[k={k},slot={s}]") for s in range(r)] for k in range(K)]
+        w = [[model.NewBoolVar(f"w_{tag}[k={k},slot={s}]") for s in range(r)] for k in range(no_values)]
         for s in range(r):
-            model.Add(sum(w[k][s] for k in range(K)) == 1)
-        for k in range(K):
+            model.Add(sum(w[k][s] for k in range(no_values)) == 1)
+        for k in range(no_values):
             model.Add(sum(w[k][s] for s in range(r)) <= 1)
-        for k in range(K):
-            occ_k = sum(bG[i][k] for i in range(n))
+        for k in range(no_values):
+            occ_k = sum(b_g[i][k] for i in range(n))
             model.Add(occ_k == sum(m[s] * w[k][s] for s in range(r)))
         eq: dict[int, list[int]] = {}
         for s, size in enumerate(m):
             eq.setdefault(size, []).append(s)
         for _, slots in eq.items():
-            for a, b in zip(slots, slots[1:]):
-                model.Add(sum((k + 1) * w[k][a] for k in range(K))
-                          <= sum((k + 1) * w[k][b] for k in range(K)))
+            for a, b in zip(slots, slots[1:], strict=False):
+                model.Add(
+                    sum((k + 1) * w[k][a] for k in range(no_values)) <= sum((k + 1) * w[k][b] for k in range(no_values))
+                )
         return w
 
-    add_pattern_constraints(bX, m1, "X")
-    add_pattern_constraints(bT, m2, "T")
-    add_pattern_constraints(bP, m3, "P")
+    add_pattern_constraints(b_x, m1, "X")
+    add_pattern_constraints(b_t, m2, "T")
+    add_pattern_constraints(b_p, m3, "P")
 
     model.Add(x[2] == t[0])
     model.Add(x[3] == t[5])
@@ -195,7 +198,7 @@ def solve_three_patterns_all(v, m1, m2, m3, max_solutions: int | None = None):
     # No objective needed for satisfiability enumeration
     solver = cp_model.CpSolver()
     collector = _AllSolutionsCollector(x, t, p, limit=max_solutions)
-    status = solver.SearchForAllSolutions(model, collector)
+    solver.SearchForAllSolutions(model, collector)
 
     # If no solutions were found, return an empty list to signal infeasibility.
     if not collector.solutions:
@@ -203,72 +206,77 @@ def solve_three_patterns_all(v, m1, m2, m3, max_solutions: int | None = None):
     return collector.solutions
 
 
-def _canonical_form(solution: tuple[list[int], list[int], list[int]]) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
+def _canonical_form(
+    solution: tuple[list[int], list[int], list[int]],
+) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
     """Convert solution to canonical form by mapping values to standardized labels.
-    
+
     Two solutions are equivalent if they have the same canonical form.
-    The canonical form uses consecutive integers 0, 1, 2, ... based on 
+    The canonical form uses consecutive integers 0, 1, 2, ... based on
     the order of first appearance of values in the combined (x, t, p) sequence.
     """
     x_sol, t_sol, p_sol = solution
-    
+
     # Combine all values in order of appearance
     all_values = x_sol + t_sol + p_sol
-    
+
     # Create mapping from original values to canonical labels (0, 1, 2, ...)
     value_to_label = {}
     next_label = 0
-    
+
     for val in all_values:
         if val not in value_to_label:
             value_to_label[val] = next_label
             next_label += 1
-    
+
     # Convert solution to canonical form
     canonical_x = tuple(value_to_label[val] for val in x_sol)
     canonical_t = tuple(value_to_label[val] for val in t_sol)
     canonical_p = tuple(value_to_label[val] for val in p_sol)
-    
+
     return (canonical_x, canonical_t, canonical_p)
 
 
-def deduplicate_solutions(solutions: list[tuple[list[int], list[int], list[int]]]) -> list[tuple[list[int], list[int], list[int]]]:
+def deduplicate_solutions(
+    solutions: list[tuple[list[int], list[int], list[int]]],
+) -> list[tuple[list[int], list[int], list[int]]]:
     """Remove solutions that are equivalent under value substitution.
-    
+
     Two solutions are considered equivalent if one can be obtained from the other
     by consistently swapping values while preserving the pattern structure.
     """
     if not solutions:
         return solutions
-    
+
     seen_canonical = set()
     unique_solutions = []
-    
+
     for solution in solutions:
         canonical = _canonical_form(solution)
         if canonical not in seen_canonical:
             seen_canonical.add(canonical)
             unique_solutions.append(solution)
-    
+
     return unique_solutions
 
 
 def solve_three_patterns_all_unique(v, m1, m2, m3, max_solutions: int | None = None):
     """Enumerate all unique feasible assignments (x, t, p) up to value substitution.
-    
+
     Returns deduplicated solutions where equivalent patterns are removed.
     Two solutions are equivalent if one can be obtained from the other by
     consistently swapping values.
     """
     # Get all solutions first
     all_solutions = solve_three_patterns_all(v, m1, m2, m3, max_solutions)
-    
+
     # Deduplicate based on canonical forms
     return deduplicate_solutions(all_solutions)
 
+
 if __name__ == "__main__":
     # Example usage
-    v  = [3, 7, 11, 20, 25, 42]      # the 6 distinct integers (K=6)
+    v = [3, 7, 11, 20, 25, 42]  # the 6 distinct integers (K=6)
     m1 = [1, 1, 1, 1, 1, 1]
     m2 = [3, 2, 1]
     m3 = [4, 1, 1]
