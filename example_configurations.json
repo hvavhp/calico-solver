@@ -1,0 +1,22 @@
+[
+  {
+    "design_goals": ["FOUR_TWO", "SIX_UNIQUE", "THREE_PAIRS"],
+    "cats": ["leo", "cira", "rumi"]
+  },
+  {
+    "design_goals": ["THREE_TWO_ONE", "TWO_TRIPLETS", "SIX_UNIQUE"], 
+    "cats": ["millie", "coconut", "gwenivere"]
+  },
+  {
+    "design_goals": ["TWO_TWO_ONE_ONE", "THREE_PAIRS", "FOUR_TWO"],
+    "cats": ["tibbit", "tecolote", "leo"]
+  },
+  {
+    "design_goals": ["SIX_UNIQUE", "THREE_PAIRS", "TWO_TRIPLETS"],
+    "cats": ["callie", "almond", "gwenivere"]
+  },
+  {
+    "design_goals": ["THREE_TWO_ONE", "FOUR_TWO", "TWO_TWO_ONE_ONE"],
+    "cats": ["rumi", "cira", "leo"]
+  }
+]
