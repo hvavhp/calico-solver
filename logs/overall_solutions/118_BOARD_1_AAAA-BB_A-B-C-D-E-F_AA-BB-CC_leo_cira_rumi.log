@@ -1,0 +1,101 @@
+================================================================================
+CALICO COMBINED SOLVER RESULTS
+================================================================================
+Board: BOARD_1
+Design Goals: AAAA-BB -> A-B-C-D-E-F -> AA-BB-CC
+Cats: leo, cira, rumi
+Timestamp: 2025-09-07 11:18:44
+================================================================================
+
+CONFIGURATION COMPARISON TABLE
+================================================================================
+Note: Missing color configurations were skipped due to optimal solution with max button score.
+Only configurations 1-4 (no missing + missing patterns) were tested.
+
+#   Configuration                       Status       Score      Best  
+----------------------------------------------------------------------
+1   No missing (complete)               OPTIMAL      113              
+2   Missing pattern for goal 1          OPTIMAL      109              
+3   Missing pattern for goal 2          OPTIMAL      118        YES   
+4   Missing pattern for goal 3          OPTIMAL      111              
+
+================================================================================
+
+BEST CONFIGURATION DETAILS
+================================================================================
+Status: OPTIMAL
+Total Objective Value: 118
+Raw Objective Value: 600000083.0
+Base Score (% 100000): 83
+Design Goals Score: 35
+Solve Time: 79.68923500000001s
+
+DETAILED RESULTS:
+------------------------------------------------------------
+DESIGN GOALS RESULTS:
+----------------------------------------
+Total Design Goals Score: 35
+
+  Goal 1 (AAAA-BB): 14 points - COMPLETE (both pattern and color)
+  Goal 2 (A-B-C-D-E-F): 10 points - PARTIAL (missing pattern)
+  Goal 3 (AA-BB-CC): 11 points - COMPLETE (both pattern and color)
+
+CATS RESULTS:
+----------------------------------------
+Cats Objective: 50
+Patches Selected: 6
+  cira: 2 patches, weight 18
+    Patch 1: [1, 8, 15, 22, 28, 29] (weight 9) - Pattern: STRIPES
+    Patch 2: [3, 9, 10, 18, 24, 32] (weight 9) - Pattern: FERNS
+  leo: 2 patches, weight 22
+    Patch 1: [4, 11, 19, 26, 34] (weight 11) - Pattern: QUATREFOIL
+    Patch 2: [16, 23, 31, 38, 46] (weight 11) - Pattern: VINES
+  rumi: 2 patches, weight 10
+    Patch 1: [35, 36, 37] (weight 5) - Pattern: DOTS
+    Patch 2: [39, 40, 41] (weight 5) - Pattern: FLOWERS
+
+BUTTONS RESULTS:
+----------------------------------------
+Buttons Objective: 11
+K-consistent Components: 10
+Rainbow Bonus: Yes
+Representative Components:
+  Component 1: Subset 24 with PURPLE
+    Tiles (absolute positions): 23, 24, 31
+  Component 2: Subset 78 with BLUE
+    Tiles (absolute positions): 15, 22
+  Component 3: Subset 79 with GREEN
+    Tiles (absolute positions): 33, 40
+  Component 4: Subset 82 with PURPLE
+    Tiles (absolute positions): 9, 10
+  Component 5: Subset 84 with NAVY
+    Tiles (absolute positions): 29, 36
+  Component 6: Subset 89 with YELLOW
+    Tiles (absolute positions): 11, 18
+  Component 7: Subset 91 with YELLOW
+    Tiles (absolute positions): 8, 16
+  Component 8: Subset 95 with BLUE
+    Tiles (absolute positions): 12, 19
+  Component 9: Subset 97 with PINK
+    Tiles (absolute positions): 32, 39
+  Component 10: Subset 101 with BLUE
+    Tiles (absolute positions): 37, 38
+
+QUILT BOARD SOLUTION:
+------------------------------------------------------------
+Calico Quilt Board (7x7 Hexagonal)
+Legend: [Color][Pattern] | G1,G2,G3=Design Goals | ---=Empty | Edge tiles shown
+Colors: B=Blue, G=Green, Y=Yellow, N=Navy, P=Purple, K=Pink
+Note: Odd rows (1,3,5) are shifted right to show hexagonal layout
+
+K🌿   Y▣    N🌿   K🌾   P❋    Y✿    G▣   (row 0)
+   G✿    Y▣    P🌾   P🌾   Y❋    B❋    B●   (row 1)
+B❋    B▣    Y🌿   D1    Y🌾   B❋    P🌿  (row 2)
+   N🌾   B▣    P🌿   P🌾   D2    N❋    Y🌾  (row 3)
+P▣    N▣    D3    P🌿   K🌾   G▣    G❋   (row 4)
+   Y●    N●    B●    B🌿   K✿    G✿    B✿   (row 5)
+K✿    N❋    K✿    B🌾   G🌿   K●    N▣   (row 6)
+
+(0)  (1)  (2)  (3)  (4)  (5)  (6)   (columns)
+
+================================================================================

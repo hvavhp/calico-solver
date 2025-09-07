@@ -11,6 +11,8 @@ import argparse
 from core.enums.design_goal import DesignGoalTiles
 from core.enums.edge_tile_settings import EdgeTileSettings
 from core.models.quilt_board import QuiltBoard
+from parallel_optimizer import run_parallel_optimization
+from solvers.all_solver import main as all_solver_main
 from solvers.buttons_solver import main as buttons_solver_main
 from solvers.cats_modeler import main as cats_modeler_main
 from solvers.combined_solver import main as combined_solver_main
@@ -64,6 +66,18 @@ def print_solver_menu():
     print("9. Cats Modeler")
     print("   - Cat-based patch selection and optimization")
     print("   - Combines design goals with cat patch scoring")
+    print()
+    print("10. Combined Solver")
+    print("   - Integrates design goals, cats, and buttons constraints")
+    print("   - Comprehensive optimization with all components")
+    print()
+    print("11. All Solver")
+    print("   - All solver comprehensive")
+    print("   - Advanced optimization features")
+    print()
+    print("12. Parallel Optimizer")
+    print("   - Run multiple configurations from JSON file in parallel")
+    print("   - Process multiple design goals/cats combinations concurrently")
     print()
     print("0. Exit")
     print("─" * 30)
@@ -455,10 +469,48 @@ def run_quilt_board_demo() -> bool:
         return False
 
 
+def run_parallel_optimizer():
+    """Run the parallel optimizer."""
+    print("\n🚀 Running Parallel Optimizer...")
+    print("─" * 40)
+
+    # Ask for JSON file path
+    json_file = input(
+        "Enter path to JSON configuration file (or press Enter for example_configurations.json): "
+    ).strip()
+    if not json_file:
+        json_file = "example_configurations.json"
+
+    # Ask for concurrency
+    try:
+        concurrency_input = input("Enter max concurrency (default 4): ").strip()
+        concurrency = int(concurrency_input) if concurrency_input else 4
+    except ValueError:
+        concurrency = 4
+
+    try:
+        results = run_parallel_optimization(json_file, concurrency)
+
+        # Print summary
+        successful = sum(1 for r in results if r["success"])
+        failed = len(results) - successful
+
+        print("\n✅ Parallel optimization completed!")
+        print(f"Total configurations: {len(results)}")
+        print(f"Successful: {successful}")
+        print(f"Failed: {failed}")
+
+        return True
+
+    except Exception as e:
+        print(f"❌ Error running Parallel Optimizer: {e}")
+        return False
+
+
 def get_user_choice() -> int | None:
     """Get user's solver choice."""
     try:
-        choice = input("Enter your choice (1-9): ").strip()
+        choice = input("Enter your choice (1-12): ").strip()
         return int(choice) if choice.isdigit() else None
     except (ValueError, KeyboardInterrupt):
         return None
@@ -469,7 +521,10 @@ def main():
     # Handle command line arguments
     parser = argparse.ArgumentParser(description="Calico Solver Runner")
     parser.add_argument(
-        "--solver", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], help="Run specific solver directly (1-7)"
+        "--solver",
+        type=int,
+        choices=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        help="Run specific solver directly (1-12)",
     )
     args = parser.parse_args()
 
@@ -489,6 +544,8 @@ def main():
             8: buttons_solver_main,
             9: cats_modeler_main,
             10: combined_solver_main,
+            11: all_solver_main,
+            12: run_parallel_optimizer,
         }
         solvers[args.solver]()
 
@@ -520,8 +577,12 @@ def main():
             cats_modeler_main()
         elif choice == 10:
             combined_solver_main()
+        elif choice == 11:
+            all_solver_main()
+        elif choice == 12:
+            run_parallel_optimizer()
         else:
-            print("❌ Invalid choice. Please enter a number from 0-8.")
+            print("❌ Invalid choice. Please enter a number from 0-12.")
 
         if choice != 0:
             print("\n" + "=" * 60)

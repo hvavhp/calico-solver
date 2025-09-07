@@ -1,6 +1,5 @@
 import json
 import time
-from itertools import combinations
 
 import numpy as np
 from ortools.sat.python import cp_model
@@ -229,15 +228,18 @@ def add_cats_constraints(design_goals_model: DesignGoalsModel, cat_names: list[s
             msk |= 1 << u
         return msk
 
+    # This represents all vertices within each subset
     masks = [mask_of(subset) for subset in subsets]
 
     # Adjacency bitmask on vertices
+    # This gives all vertices adjacent to each vertex
     nbr = [0] * vars_count
     for u, v in vertex_edges:
         nbr[u] |= 1 << v
         nbr[v] |= 1 << u
 
     # Per-subset neighbor-vertices mask
+    # This gives all the vertices adjacent to each subset
     adj_mask = []
     for subset in subsets:
         msk = 0
@@ -318,85 +320,92 @@ def add_cats_constraints(design_goals_model: DesignGoalsModel, cat_names: list[s
                 i = idxs[a_i]
                 for a_j in range(a_i + 1, len(idxs)):
                     j = idxs[a_j]
+
+                    # check if vertices of one subset do not coincide with adjacent vertices of the other subset
                     if (masks[j] & adj_mask[i]) == 0 and (masks[i] & adj_mask[j]) == 0:
                         continue
+
+                    # check if overlapping exists
                     if any(_v in subsets[i] for _v in subsets[j]):
                         continue
+
                     adj[i].add(j)
                     adj[j].add(i)
         return adj
 
-    # Time both approaches and verify they produce the same result
-    print("Building adjacency using original method...")
-    start_time = time.time()
-    adj_original = build_adj_original(same_label_idxs, masks, adj_mask, subsets, cat_for_weight, m)
-    original_time = time.time() - start_time
+    # # Time both approaches and verify they produce the same result
+    # print("Building adjacency using original method...")
+    # start_time = time.time()
+    # adj_original = build_adj_original(same_label_idxs, masks, adj_mask, subsets, cat_for_weight, m)
+    # original_time = time.time() - start_time
 
-    print("Building adjacency using NumPy-optimized method...")
+    # print("Building adjacency using NumPy-optimized method...")
     start_time = time.time()
     adj_numpy = build_adj_numpy_optimized(same_label_idxs, masks, adj_mask, subsets, cat_for_weight, m)
     numpy_time = time.time() - start_time
 
-    # Verify both methods produce the same result
-    results_match = True
-    for i in range(m):
-        if adj_original[i] != adj_numpy[i]:
-            results_match = False
-            print(f"Mismatch at index {i}: original={adj_original[i]}, numpy={adj_numpy[i]}")
-            break
+    # # Verify both methods produce the same result
+    # results_match = True
+    # for i in range(m):
+    #     if adj_original[i] != adj_numpy[i]:
+    #         results_match = False
+    #         print(f"Mismatch at index {i}: original={adj_original[i]}, numpy={adj_numpy[i]}")
+    #         break
 
-    print(f"Original method time: {original_time:.4f}s")
+    # print(f"Original method time: {original_time:.4f}s")
     print(f"NumPy method time: {numpy_time:.4f}s")
-    if numpy_time > 0:
-        speedup = original_time / numpy_time
-        print(f"Speedup: {speedup:.2f}x")
-    print(f"Results match: {results_match}")
+    # if numpy_time > 0:
+    #     speedup = original_time / numpy_time
+    #     print(f"Speedup: {speedup:.2f}x")
+    # print(f"Results match: {results_match}")
 
-    # Use the NumPy version if it's correct
-    adj = adj_numpy if results_match else adj_original
+    # # Use the NumPy version if it's correct
+    # adj = adj_numpy if results_match else adj_original
+    adj = adj_numpy
 
-    # Enumerate forbidden triangles within each same-label partition
-    forbidden_triangles = []
-    for w, idxs in same_label_idxs.items():
-        # Skip building forbidden triangles for gwenivere
-        if cat_for_weight.get(w) in ["gwenivere", "cira"]:
-            continue
+    # # Enumerate forbidden triangles within each same-label partition
+    # forbidden_triangles = []
+    # for w, idxs in same_label_idxs.items():
+    #     # Skip building forbidden triangles for gwenivere
+    #     if cat_for_weight.get(w) in ["gwenivere", "cira"]:
+    #         continue
 
-        idxs_sorted = sorted(idxs, key=lambda t: (len(adj[t]), t))
-        pos = {u: i for i, u in enumerate(idxs_sorted)}
-        # Work with sets as ordered by pos to avoid duplicates
-        neigh_sets = {u: {v for v in adj[u] if pos.get(v, -1) > pos[u]} for u in idxs_sorted}
-        for i in idxs_sorted:
-            neighbors = neigh_sets[i]
-            for j in neighbors:
-                # Intersection of higher-index neighbors
-                common = neighbors & neigh_sets[j]
-                for k in common:
-                    # These are virtual subsets, so they allow to exist freely
-                    if weights[i] == 100000000 and weights[j] == 100000000 and weights[k] == 100000000:
-                        continue
-                    forbidden_triangles.append((i, j, k))
+    #     idxs_sorted = sorted(idxs, key=lambda t: (len(adj[t]), t))
+    #     pos = {u: i for i, u in enumerate(idxs_sorted)}
+    #     # Work with sets as ordered by pos to avoid duplicates
+    #     neigh_sets = {u: {v for v in adj[u] if pos.get(v, -1) > pos[u]} for u in idxs_sorted}
+    #     for i in idxs_sorted:
+    #         neighbors = neigh_sets[i]
+    #         for j in neighbors:
+    #             # Intersection of higher-index neighbors
+    #             common = neighbors & neigh_sets[j]
+    #             for k in common:
+    #                 # These are virtual subsets, so they allow to exist freely
+    #                 if weights[i] == 100000000 and weights[j] == 100000000 and weights[k] == 100000000:
+    #                     continue
+    #                 forbidden_triangles.append((i, j, k))
 
-    outer_pattern_restrictions: list[tuple[int, int]] = []
-    for pattern in ALL_PATTERNS:
-        groups = [pattern_groups.get(w, {}).get(pattern, []) for w in same_label_idxs]
-        for combo in combinations(groups, 2):
-            for i in combo[0]:
-                s_1 = set(subsets[i])
-                for j in combo[1]:
-                    s_2 = set(subsets[j])
-                    if s_1 & s_2 != set():
-                        continue
-                    sorted_indices = sorted([i, j])
-                    if sorted_indices in outer_pattern_restrictions:
-                        continue
-                    outer_pattern_restrictions.append(sorted_indices)
+    # outer_pattern_restrictions: list[tuple[int, int]] = []
+    # for pattern in ALL_PATTERNS:
+    #     groups = [pattern_groups.get(w, {}).get(pattern, []) for w in same_label_idxs]
+    #     for combo in combinations(groups, 2):
+    #         for i in combo[0]:
+    #             s_1 = set(subsets[i])
+    #             for j in combo[1]:
+    #                 s_2 = set(subsets[j])
+    #                 if s_1 & s_2 != set():
+    #                     continue
+    #                 sorted_indices = sorted([i, j])
+    #                 if sorted_indices in outer_pattern_restrictions:
+    #                     continue
+    #                 outer_pattern_restrictions.append(sorted_indices)
 
     # Create variables
     y = [model.NewBoolVar(f"cats_y[{i}]") for i in range(m)]
 
     # Add constraints
 
+    subset_references = {}  # Map subset index to its reference pattern variable
     # Pattern variable constraints: y[i] can only be 1 if all tiles in subsets[i] have the same pattern
     # More efficient approach: handle edge tiles first, then use first tile as reference for others
     for i in range(m):
@@ -424,6 +433,7 @@ def add_cats_constraints(design_goals_model: DesignGoalsModel, cat_names: list[s
         # No edge tiles, use first tile as reference for consistency
         reference_tile = actual_tiles[0]
         reference_pattern_var = pattern_variables[f"P_{reference_tile}"]
+        subset_references[i] = reference_pattern_var
 
         # All other tiles must have same pattern as reference when y[i] == 1
         for tile in actual_tiles[1:]:
@@ -432,27 +442,69 @@ def add_cats_constraints(design_goals_model: DesignGoalsModel, cat_names: list[s
             # If y[i] == 1, then tile_pattern_var == reference_pattern_var
             model.Add(tile_pattern_var == reference_pattern_var).OnlyEnforceIf(y[i])
 
+    # Add adjacency constraints: if two adjacent subsets are both selected,
+    # their patterns must be different
+    for i in subset_references:
+        for j in adj[i]:
+            if j in subset_references and i < j:  # Avoid duplicate constraints
+                pattern_ref_i = subset_references[i]
+                pattern_ref_j = subset_references[j]
+
+                # When both subsets are selected, their patterns must differ
+                model.Add(pattern_ref_i != pattern_ref_j).OnlyEnforceIf([y[i], y[j]])
+
     # Disjointness per vertex
     for v in range(vars_count):
         model.Add(sum(y[i] for i in range(m) if (masks[i] >> v) & 1) <= 1)
 
-    # Triangle cuts
-    for i, j, k in forbidden_triangles:
-        model.Add(y[i] + y[j] + y[k] <= 2)
+    # # Triangle cuts
+    # for i, j, k in forbidden_triangles:
+    #     model.Add(y[i] + y[j] + y[k] <= 2)
+
+    # for w, idxs in same_label_idxs.items():
+    #     groups = pattern_groups[w]
+    #     active = []
+    #     for pattern, idxs in groups.items():
+    #         b = model.NewBoolVar(f"cats_b[{w}][{pattern.value}]")
+    #         model.AddMaxEquality(b, [y[idx] for idx in idxs])
+    #         active.append(b)
+    #     model.Add(sum(active) <= 2)
 
     # Make sure that each cat occupy only 2 patterns
+    cat_indicators = {}
     for w, idxs in same_label_idxs.items():
-        groups = pattern_groups[w]
-        active = []
-        for pattern, idxs in groups.items():
-            b = model.NewBoolVar(f"cats_b[{w}][{pattern.value}]")
-            model.AddMaxEquality(b, [y[idx] for idx in idxs])
-            active.append(b)
-        model.Add(sum(active) <= 2)
+        pattern_values = list(PATTERN_MAP.values())
+        subset_pattern_indicators = {}
+        for v in pattern_values:
+            for i in idxs:
+                if weights[i] == 100000000:
+                    continue
 
-    # Make sure that no two cats occupy the same pattern
-    for i, j in outer_pattern_restrictions:
-        model.Add(y[i] + y[j] <= 1)
+                subset_indicator = model.NewBoolVar(f"subset_pattern_indicator[{w}][{i}][{v}]")
+                # Create boolean variable for pattern equality condition
+                pattern_match = model.NewBoolVar(f"pattern_match[{i}][{v}]")
+                model.Add(subset_references[i] == v).OnlyEnforceIf(pattern_match)
+                model.Add(subset_references[i] != v).OnlyEnforceIf(pattern_match.Not())
+
+                # If y[i] = 1 AND pattern matches v, then subset_indicator = 1
+                model.Add(subset_indicator == 1).OnlyEnforceIf([y[i], pattern_match])
+                subset_pattern_indicators.setdefault(v, []).append(subset_indicator)
+
+        cat_pattern_indicators = []
+        for v, _idxs in subset_pattern_indicators.items():
+            cat_indicator = model.NewBoolVar(f"cat_pattern_indicator[{w}][{v}]")
+            model.AddMaxEquality(cat_indicator, _idxs)
+            cat_pattern_indicators.append(cat_indicator)
+            cat_indicators.setdefault(v, []).append(cat_indicator)
+        model.Add(sum(cat_pattern_indicators) <= 2)
+
+    # each pattern can only be occupied by one cat
+    for _v, idxs in cat_indicators.items():
+        model.Add(sum(idxs) <= 1)
+
+    # # Make sure that no two cats occupy the same pattern
+    # for i, j in outer_pattern_restrictions:
+    #     model.Add(y[i] + y[j] <= 1)
 
     return CatsModelComponents(
         y_variables=y,
@@ -460,8 +512,8 @@ def add_cats_constraints(design_goals_model: DesignGoalsModel, cat_names: list[s
         weights=weights,
         cat_for_weight=cat_for_weight,
         masks=masks,
-        forbidden_triangles=forbidden_triangles,
-        outer_pattern_restrictions=outer_pattern_restrictions,
+        forbidden_triangles=[],
+        outer_pattern_restrictions=[],
         pattern_groups=pattern_groups,
         same_label_idxs=same_label_idxs,
     )

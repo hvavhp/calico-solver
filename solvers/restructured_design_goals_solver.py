@@ -231,6 +231,8 @@ def build_model(
     m3: DesignGoalTile = DesignGoalTiles.FOUR_TWO.value,
     cap: int = 3,
     time_limit_s: float = 5.0,
+    missing_pattern: int = None,
+    missing_color: int = None,
 ) -> DesignGoalsModel:
     """
     v  : list of 6 distinct ints
@@ -285,12 +287,18 @@ def build_model(
     b_colors_2 = [b_color_map[i] for i in variable_indices_2]
 
     # Patterns (same patterns on primed/unprimed sets)
-    add_pattern(model, b_patterns_0, m1.config_numbers, "P")
-    add_pattern(model, b_patterns_1, m2.config_numbers, "P")
-    add_pattern(model, b_patterns_2, m3.config_numbers, "P")
-    add_pattern(model, b_colors_0, m1.config_numbers, "C")
-    add_pattern(model, b_colors_1, m2.config_numbers, "C")
-    add_pattern(model, b_colors_2, m3.config_numbers, "C")
+    if missing_pattern is None or missing_pattern != 1:
+        add_pattern(model, b_patterns_0, m1.config_numbers, "P")
+    if missing_pattern is None or missing_pattern != 2:
+        add_pattern(model, b_patterns_1, m2.config_numbers, "P")
+    if missing_pattern is None or missing_pattern != 3:
+        add_pattern(model, b_patterns_2, m3.config_numbers, "P")
+    if missing_color is None or missing_color != 1:
+        add_pattern(model, b_colors_0, m1.config_numbers, "C")
+    if missing_color is None or missing_color != 2:
+        add_pattern(model, b_colors_1, m2.config_numbers, "C")
+    if missing_color is None or missing_color != 3:
+        add_pattern(model, b_colors_2, m3.config_numbers, "C")
 
     pair_indicators = add_pair_indicators(model, b_patterns, b_colors, "")
 
